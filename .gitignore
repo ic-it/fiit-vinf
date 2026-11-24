@@ -1,0 +1,10 @@
+.venv/
+.cache/
+__pycache__/
+*.pyc
+data/
+.DS_Store
+dist/
+.ruff_cache/
+/vinf.project.json
+/reports/

@@ -1,0 +1,44 @@
+<page>
+    <title>Anguilla labiata</title>
+    <ns>0</ns>
+    <id>5812376</id>
+    <revision>
+      <id>1221744633</id>
+      <parentid>1186943499</parentid>
+      <timestamp>2024-05-01T18:57:11Z</timestamp>
+      <contributor>
+        <username>UtherSRG</username>
+        <id>33145</id>
+      </contributor>
+      <comment>/* References */ swap QIDs, and one</comment>
+      <origin>1221744633</origin>
+      <model>wikitext</model>
+      <format>text/x-wiki</format>
+      <text bytes="1731" sha1="enkuktj4ulguvu7rfshquax3aalq2mr" xml:space="preserve">{{Short description|Subspecies of fish}}
+{{Italic title}}
+{{Subspeciesbox 
+| name = African mottled eel
+| genus = Anguilla
+| species = bengalensis
+| subspecies = labiata
+| authority = ([[Wilhelm Peters|W. K. H. Peters]], 1852) 
+}}
+
+'''''Anguilla bengalensis labiata''''', the '''African mottled eel,''' is a subspecies of [[eel]] in the genus ''[[Anguilla (fish)|Anguilla]]'' of the family [[Anguillidae]].
+ 
+Showing the typical characteristics of the Anguillidae, this species grows to 1.75&amp;nbsp;m and as much as 20&amp;nbsp;kg. The adult diet consists of [[crab]]s, [[frog]]s, and [[insect]]s, as well as fish.&lt;ref name=&quot;fishbase&quot;&gt;{{FishBase species alt |ID = 1273 | taxon = Anguilla bengalensis labiata | year = 2006 | month = 05}}&lt;/ref&gt; It is found in east Africa: [[Lake Kariba]], middle [[Zambezi River|Zambezi]], [[Pungwe River|Pungwe]], and [[Buzi River (Mozambique)|Buzi]] systems, Upper and Lower [[Save River (Africa)|Save]]/[[Rhunde River|Rhunde]] system, [[Umzingwani River|Umzingwani]] and [[Limpopo River]]s. The dorsal side of the fish is mottled yellow olive, the ventral surface lighter; adults are less obviously mottled than the juveniles.&lt;ref name=&quot;fisher&quot;&gt;{{cite web|url=http://www.samara.co.zw/fisherman/species/spec2.html |title=Species Fact File: African Mottled Eel (Anguilla bengalensis labiata) |publisher=The Zimbabwe Fisherman On-line |url-status=dead |archive-url=https://web.archive.org/web/20060518004411/http://www.samara.co.zw/fisherman/species/spec2.html |archive-date=2006-05-18 }}&lt;/ref&gt;
+
+==References==
+{{Reflist}}
+
+{{Taxonbar|from2=Q3644181|from1=Q28657178|from3=Q28657179}}
+
+[[Category:Anguillidae]]
+[[Category:Fish of Africa]]
+[[Category:Taxa named by Wilhelm Peters]]
+
+
+{{Anguilliformes-stub}}</text>
+      <sha1>enkuktj4ulguvu7rfshquax3aalq2mr</sha1>
+    </revision>
+  </page>

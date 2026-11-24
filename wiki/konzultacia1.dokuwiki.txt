@@ -1,0 +1,22 @@
+====== First consultation - sources and questions ======
+
+[[user:icit:start|Project page]]
+
+The initial goal was to search fish species using names, descriptions and biological facts. The first submission implements full-text search; numerical attribute filters are not implemented.
+
+**Initial source:** [[https://www.fishbase.se/search.php|FishBase]], its linked scientific-name catalogs and English species summaries. The target fields are scientific/common names, taxonomy, environment, distribution, reported maximum length and available IUCN status.
+
+**Planned Wikipedia source:** [[https://dumps.wikimedia.org/enwiki/|English Wikipedia dump]]. Example articles include [[https://en.wikipedia.org/wiki/Common_bream|Common bream]], [[https://en.wikipedia.org/wiki/Sterlet|Sterlet]] and [[https://en.wikipedia.org/wiki/Amphiprion_ocellaris|Ocellaris clownfish]]. A later stage will identify candidate matches by scientific name and verify redirects, identifiers and taxonomic agreement. Descriptions and match evidence will remain separate from source records.
+
+===== Initial questions =====
+
+These are motivating questions and candidate source pages, not verified results from the current development sample. Current observed text queries and results are in the [[user:icit:odovzdanie1|first-submission report]]. The length-threshold example below is an initial idea, not an implemented query operator.
+
+^ Question ^ Candidate source / expected kind of answer ^
+| Which freshwater fish occur in Europe? | [[https://fishbase.se/summary/SpeciesSummary.php?id=268&lang=English|Abramis brama]]; environment and distribution. |
+| Which tropical reef fish have reported maximum length below 15 cm? | [[https://fishbase.se/summary/SpeciesSummary.php?id=6509&lang=English|Amphiprion ocellaris]]; habitat and length. |
+| Which critically endangered species occur in the Mekong? | [[https://fishbase.se/summary/SpeciesSummary.php?id=16239&lang=English|Aaptosyax grypus]]; distribution and IUCN status. |
+| What maximum length is reported for sterlet? | [[https://fishbase.se/summary/SpeciesSummary.php?id=4604&lang=English|Acipenser ruthenus]]; length and measurement type. |
+| Which temperate freshwater fish occur in China? | [[https://fishbase.se/summary/SpeciesSummary.php?id=52749&lang=English|Siniperca obscura]]; environment, climate and distribution. |
+
+The current search accepts words, quoted phrases and Boolean expressions. It does not interpret arbitrary natural-language questions. Additional fish websites can later contribute their own extraction adapters and source-qualified records.

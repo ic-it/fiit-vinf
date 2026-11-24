@@ -1,0 +1,418 @@
+[
+  {
+    "archive": "fishbase-additional.zip",
+    "source": "ab9ffc84-0ae1-580e-8c65-548e8c47b722/source.json",
+    "expected": {
+      "scientific_name": "Gadus macrocephalus",
+      "fishbase_id": "308",
+      "common_name": "Pacific cod",
+      "class_name": "Teleostei",
+      "order": "Gadiformes",
+      "family": "Gadidae",
+      "environments": [
+        "marine",
+        "brackish"
+      ],
+      "climate": "boreal",
+      "max_length_cm": 119,
+      "measurement": "TL",
+      "sex": "male/unsexed",
+      "iucn_code": "NE"
+    }
+  },
+  {
+    "archive": "fishbase-additional.zip",
+    "source": "ae7cb95d-2730-5d31-8f2f-de2fb13eab7c/source.json",
+    "expected": {
+      "scientific_name": "Rhincodon typus",
+      "fishbase_id": "2081",
+      "common_name": "Whale shark",
+      "class_name": "Elasmobranchii",
+      "order": "Orectolobiformes",
+      "family": "Rhincodontidae",
+      "environments": [
+        "marine"
+      ],
+      "climate": "subtropical",
+      "max_length_cm": 2000,
+      "measurement": "TL",
+      "sex": "female",
+      "iucn_code": "EN"
+    }
+  },
+  {
+    "archive": "fishbase-additional.zip",
+    "source": "2ea3a129-2b3b-52cc-af45-0472226cec7f/source.json",
+    "expected": {
+      "scientific_name": "Gadus morhua",
+      "fishbase_id": "69",
+      "common_name": "Atlantic cod",
+      "class_name": "Teleostei",
+      "order": "Gadiformes",
+      "family": "Gadidae",
+      "environments": [
+        "marine",
+        "brackish"
+      ],
+      "climate": "temperate",
+      "max_length_cm": 200,
+      "measurement": "TL",
+      "sex": "male/unsexed",
+      "iucn_code": "VU"
+    }
+  },
+  {
+    "archive": "fishbase-additional.zip",
+    "source": "0044731a-0b07-52d7-beda-9efbce461e44/source.json",
+    "expected": {
+      "scientific_name": "Plectrochilus wieneri",
+      "fishbase_id": "48782",
+      "common_name": null,
+      "class_name": "Teleostei",
+      "order": "Siluriformes",
+      "family": "Trichomycteridae",
+      "environments": [
+        "freshwater"
+      ],
+      "climate": "tropical",
+      "max_length_cm": 7.9,
+      "measurement": "NG",
+      "sex": "male/unsexed",
+      "iucn_code": "LC"
+    }
+  },
+  {
+    "archive": "fishbase-additional.zip",
+    "source": "002387fd-7de1-54cd-af88-ead4b72a2427/source.json",
+    "expected": {
+      "scientific_name": "Oxyeleotris mertoni",
+      "fishbase_id": "70462",
+      "common_name": null,
+      "class_name": "Teleostei",
+      "order": "Gobiiformes",
+      "family": "Butidae",
+      "environments": [
+        "marine",
+        "freshwater",
+        "brackish"
+      ],
+      "climate": "tropical",
+      "max_length_cm": null,
+      "measurement": null,
+      "sex": null,
+      "iucn_code": "LC"
+    }
+  },
+  {
+    "archive": "fishbase-additional.zip",
+    "source": "0048ea5c-e727-546d-b46c-332239720005/source.json",
+    "expected": {
+      "scientific_name": "Odontesthes piquava",
+      "fishbase_id": "60388",
+      "common_name": null,
+      "class_name": "Teleostei",
+      "order": "Atheriniformes",
+      "family": "Atherinopsidae",
+      "environments": [
+        "freshwater"
+      ],
+      "climate": "subtropical",
+      "max_length_cm": 26.3,
+      "measurement": "SL",
+      "sex": "male/unsexed",
+      "iucn_code": "NT"
+    }
+  },
+  {
+    "archive": "fishbase-additional.zip",
+    "source": "005f05da-9c06-5b5a-bdc3-aba4cb34065b/source.json",
+    "expected": {
+      "scientific_name": "Polyipnus tridentifer",
+      "fishbase_id": "10562",
+      "common_name": "Three-spined hatchetfish",
+      "class_name": "Teleostei",
+      "order": "Stomiiformes",
+      "family": "Sternoptychidae",
+      "environments": [
+        "marine"
+      ],
+      "climate": "deep-water",
+      "max_length_cm": 7.2,
+      "measurement": "SL",
+      "sex": "male/unsexed",
+      "iucn_code": "LC"
+    }
+  },
+  {
+    "archive": "fishbase-additional.zip",
+    "source": "00721643-8747-57b5-aaf2-d1ba2d35a601/source.json",
+    "expected": {
+      "scientific_name": "Ophthalmolebias ilheusensis",
+      "fishbase_id": "65918",
+      "common_name": null,
+      "class_name": "Teleostei",
+      "order": "Cyprinodontiformes",
+      "family": "Rivulidae",
+      "environments": [
+        "freshwater"
+      ],
+      "climate": "tropical",
+      "max_length_cm": null,
+      "measurement": null,
+      "sex": null,
+      "iucn_code": "CR"
+    }
+  },
+  {
+    "archive": "fishbase-additional.zip",
+    "source": "027ea98e-5e33-5526-9fc2-bba64f78cbec/source.json",
+    "expected": {
+      "scientific_name": "Myliobatis freminvillei",
+      "fishbase_id": "1251",
+      "common_name": "Bullnose eagle ray",
+      "class_name": "Elasmobranchii",
+      "order": "Myliobatiformes",
+      "family": "Myliobatidae",
+      "environments": [
+        "marine",
+        "brackish"
+      ],
+      "climate": "subtropical",
+      "max_length_cm": 129,
+      "measurement": "WD",
+      "sex": "male/unsexed",
+      "iucn_code": "VU"
+    }
+  },
+  {
+    "archive": "fishbase-additional.zip",
+    "source": "03a7bb2e-187f-5312-a512-b9fcf1250897/source.json",
+    "expected": {
+      "scientific_name": "Agonus cataphractus",
+      "fishbase_id": "36",
+      "common_name": "Hooknose",
+      "class_name": "Teleostei",
+      "order": "Perciformes/Cottoidei",
+      "family": "Agonidae",
+      "environments": [
+        "marine"
+      ],
+      "climate": "temperate",
+      "max_length_cm": 21,
+      "measurement": "TL",
+      "sex": "male/unsexed",
+      "iucn_code": "LC"
+    }
+  },
+  {
+    "archive": "fishbase-additional.zip",
+    "source": "a84fbe46-cc20-5be4-8b23-80b07b25b899/source.json",
+    "expected": {
+      "scientific_name": "Micromesistius poutassou",
+      "fishbase_id": "31",
+      "common_name": "Blue whiting",
+      "class_name": "Teleostei",
+      "order": "Gadiformes",
+      "family": "Gadidae",
+      "environments": [
+        "marine"
+      ],
+      "climate": "temperate",
+      "max_length_cm": 55.5,
+      "measurement": "TL",
+      "sex": "male/unsexed",
+      "iucn_code": "NE"
+    }
+  },
+  {
+    "archive": "fishbase-additional.zip",
+    "source": "18c6125b-46b6-5a1d-8acc-421f633a8ed6/source.json",
+    "expected": {
+      "scientific_name": "Parapercis ommatura",
+      "fishbase_id": "23557",
+      "common_name": null,
+      "class_name": "Teleostei",
+      "order": "Perciformes/Uranoscopoidei",
+      "family": "Pinguipedidae",
+      "environments": [
+        "marine"
+      ],
+      "climate": "subtropical",
+      "max_length_cm": 13,
+      "measurement": "SL",
+      "sex": "male/unsexed",
+      "iucn_code": "NE"
+    }
+  },
+  {
+    "archive": "fishbase-additional.zip",
+    "source": "f6328ec8-cc06-54d8-a5a5-70b488e7a290/source.json",
+    "expected": {
+      "scientific_name": "Argentina australiae",
+      "fishbase_id": "14007",
+      "common_name": "Silverside",
+      "class_name": "Teleostei",
+      "order": "Argentiniformes",
+      "family": "Argentinidae",
+      "environments": [
+        "marine"
+      ],
+      "climate": "temperate",
+      "max_length_cm": 13,
+      "measurement": "TL",
+      "sex": "male/unsexed",
+      "iucn_code": "NE"
+    }
+  },
+  {
+    "archive": "fishbase-additional.zip",
+    "source": "ae4df6c4-ca7d-5f4b-8121-b9780927ee62/source.json",
+    "expected": {
+      "scientific_name": "Pterygotrigla spirai",
+      "fishbase_id": "50452",
+      "common_name": null,
+      "class_name": "Teleostei",
+      "order": "Perciformes/Scorpaenoidei",
+      "family": "Triglidae",
+      "environments": [
+        "marine"
+      ],
+      "climate": "deep-water",
+      "max_length_cm": 15.3,
+      "measurement": "SL",
+      "sex": "male/unsexed",
+      "iucn_code": "NE"
+    }
+  },
+  {
+    "archive": "fishbase-additional.zip",
+    "source": "976fde65-4bc4-5f33-b3e0-b296ae0503f1/source.json",
+    "expected": {
+      "scientific_name": "Parapercis aurantiaca",
+      "fishbase_id": "23551",
+      "common_name": null,
+      "class_name": "Teleostei",
+      "order": "Perciformes/Uranoscopoidei",
+      "family": "Pinguipedidae",
+      "environments": [
+        "marine"
+      ],
+      "climate": "subtropical",
+      "max_length_cm": 17,
+      "measurement": "SL",
+      "sex": "male/unsexed",
+      "iucn_code": "NE"
+    }
+  },
+  {
+    "archive": "fishbase-additional.zip",
+    "source": "c4d294ba-d81d-539d-899a-415fd3d0de32/source.json",
+    "expected": null
+  },
+  {
+    "archive": "fishbase-20261013.zip",
+    "source": "0d1ddfdd-8fe1-5151-b007-9abe514ce9ab/source.json",
+    "expected": {
+      "scientific_name": "Trachinus pellegrini",
+      "fishbase_id": "5036",
+      "common_name": "Cape Verde weever",
+      "class_name": "Teleostei",
+      "order": "Perciformes/Percoidei",
+      "family": "Trachinidae",
+      "environments": [
+        "marine"
+      ],
+      "climate": "tropical",
+      "max_length_cm": 20,
+      "measurement": "TL",
+      "sex": "male/unsexed",
+      "iucn_code": "LC"
+    }
+  },
+  {
+    "archive": "fishbase-20261013.zip",
+    "source": "4c36db4f-e119-5a3c-a88e-477a1e00b638/source.json",
+    "expected": {
+      "scientific_name": "Torquigener squamicauda",
+      "fishbase_id": "52448",
+      "common_name": "Brush-tail toadfish",
+      "class_name": "Teleostei",
+      "order": "Tetraodontiformes",
+      "family": "Tetraodontidae",
+      "environments": [
+        "marine",
+        "brackish"
+      ],
+      "climate": "subtropical",
+      "max_length_cm": 15,
+      "measurement": "TL",
+      "sex": "male/unsexed",
+      "iucn_code": "LC"
+    }
+  },
+  {
+    "archive": "fishbase-20261013.zip",
+    "source": "8ed3534a-c898-59ee-88c5-12870289d101/source.json",
+    "expected": {
+      "scientific_name": "Trichomycterus aguarague",
+      "fishbase_id": "63126",
+      "common_name": null,
+      "class_name": "Teleostei",
+      "order": "Siluriformes",
+      "family": "Trichomycteridae",
+      "environments": [
+        "freshwater"
+      ],
+      "climate": "tropical",
+      "max_length_cm": null,
+      "measurement": null,
+      "sex": null,
+      "iucn_code": "LC"
+    }
+  },
+  {
+    "archive": "fishbase-20261013.zip",
+    "source": "d9dff3a6-0bfb-5433-8524-7751f6d6a2f2/source.json",
+    "expected": {
+      "scientific_name": "Triplophysa wudangensis",
+      "fishbase_id": "71139",
+      "common_name": null,
+      "class_name": "Teleostei",
+      "order": "Cypriniformes",
+      "family": "Nemacheilidae",
+      "environments": [
+        "freshwater"
+      ],
+      "climate": "subtropical",
+      "max_length_cm": 5.9,
+      "measurement": "SL",
+      "sex": "male/unsexed",
+      "iucn_code": "NE"
+    }
+  },
+  {
+    "archive": "fishbase-20261013.zip",
+    "source": "49774cd5-db31-5577-b701-e444fce1838b/source.json",
+    "expected": {
+      "scientific_name": "Triplophysa qingzhenensis",
+      "fishbase_id": "71140",
+      "common_name": null,
+      "class_name": "Teleostei",
+      "order": "Cypriniformes",
+      "family": "Nemacheilidae",
+      "environments": [
+        "freshwater"
+      ],
+      "climate": "subtropical",
+      "max_length_cm": 10.5,
+      "measurement": "SL",
+      "sex": "male/unsexed",
+      "iucn_code": "NE"
+    }
+  },
+  {
+    "archive": "fishbase-20261013.zip",
+    "source": "66e146f2-e1eb-585c-9363-f0dbc0c20f5e/source.json",
+    "expected": null
+  }
+]

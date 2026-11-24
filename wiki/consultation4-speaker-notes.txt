@@ -1,0 +1,105 @@
+Fourth consultation: PyLucene index
+24 November 2026; listed deadline 25 November
+
+THREE-MINUTE EXPLANATION
+
+I added a separate vinf-lucene library and integrated it into the existing Typer/Rich
+application. Building, searching, inspecting the schema and comparing results are
+independent commands. The current project supplies paths, so they do not need to
+be repeated. The original self-written index and search commands still work.
+
+The new index reads completed Spark extraction and join snapshots. All 9,724
+FishBase species are indexed. The 5,157 accepted Wikipedia links add descriptions,
+categories, authority and conservation status; the other 4,567 fish remain searchable.
+The builder does not crawl, parse raw HTML or start Spark.
+
+This is native PyLucene 9.12.0: a JCC/JNI binding to Java Lucene 9.12.0. I built the
+required modules using verified Apache artifacts and a private JDK 17. IndexWriter
+writes a native FSDirectory; IndexSearcher executes the queries. The measured build
+took about 3.2 seconds. The Lucene index payload is 18,234,605 bytes, versus
+71,187,487 bytes for the original format. Native compiler/JDK dependencies and
+manifests are excluded from both index-size figures.
+
+The schema separates text from exact filters and display metadata. TextFields hold
+scientific/common names, FishBase sections, Wikipedia lead, categories and authority.
+StringFields provide exact identities, family/order, environments and status codes.
+Stored-only fields preserve URLs, UUID and Wikipedia revision/hash. Each source
+text is stored once; there is no extra combined fulltext copy. FishBase and Wikipedia
+conservation values remain separate. Numeric length filters are not implemented.
+
+StandardAnalyzer tokenizes and lowercases text without stemming or stop-word removal.
+Exact fields use KeywordAnalyzer and are case-sensitive. The query parser defaults
+to AND and supports Boolean expressions, positional phrases, fuzzy terms and exact
+field filters. Quoted phrases use analyzed token positions: punctuation is not literal.
+The older search backend still offers punctuation-sensitive literal matching.
+
+Ranking uses Lucene BM25 with k1=1.2 and b=0.75. I compared the existing five queries
+with the same FishBase identities in three modes: old BM25, Lucene FishBase-only,
+and Lucene with Wikipedia. I report actual top-five results, counts, overlap and
+five-run median latency after a warm-up. The local medians are lower for Lucene on
+these queries. This is not a general performance guarantee or a relevance-quality
+measurement. Differences also come from token boundaries, per-field statistics,
+phrase scoring and, in the enriched run, added Wikipedia text.
+
+Verification compared all 9,724 stored FishBase records and all 5,157 enrichments
+with their input snapshots. Lucene CheckIndex reported no corruption. All 30 tests
+passed, including two small native integration checks using four real records.
+
+WHAT TO SHOW
+
+1. Open the consultation-4 wiki page: measured counts/sizes, explicit schema,
+   five query comparisons and GitHub link. The field table explains each choice.
+
+2. Run:
+
+    uv run vinf lucene status
+    uv run vinf lucene query 'marine (Pacific OR Atlantic) -freshwater' --limit 3
+    uv run vinf lucene query '"coral reefs"' --limit 3 --explain
+    uv run vinf lucene query 'scientific_name:Aaptosyaz~1' --limit 3
+    uv run vinf lucene query 'family:Cyprinidae AND environment:freshwater' --limit 3
+    uv run vinf lucene query 'wiki_authority:Hamilton' --limit 3
+
+3. Show reports/consultation4/comparison.json and audit.json. The wiki presents
+   results as text tables. An offline four-record demo is included in the evidence
+   archive; after native dependencies are installed, its indexing/search need no web.
+
+4. If asked to rebuild the full index, it is a short local operation:
+
+    uv run vinf lucene build --rebuild
+
+   This changes the build manifest/timing; regenerate the audit/comparison/report
+   afterwards if updating the published evidence.
+
+POINTS TO EXPLAIN IF ASKED
+
+PyLucene versus Lucene: Lucene is the Java retrieval library. PyLucene exposes its
+real Java classes to Python through generated native JNI bindings.
+
+TF and DF: TF counts occurrences in one document/field. DF counts documents with
+the term in that field. IDF gives rarer terms more weight. BM25 saturates TF and
+normalizes length; k1 controls saturation and b controls length normalization.
+Use --explain to show the actual frequency, IDF and length terms for a real hit.
+
+Different rankings: the old engine scores positive terms in one concatenated text.
+Lucene uses per-field norms/statistics and scores PhraseQuery occurrences. Its
+StandardAnalyzer also splits punctuation/hyphens differently. Absolute scores should
+not be compared. A different ordering or extra result does not prove better relevance.
+
+Exact lookup versus phrase: source_id:16239 is an exact keyword lookup.
+scientific_exact:"aaptosyax grypus" uses the normalized full scientific name.
+"coral reefs" is a token phrase and ignores punctuation differences after analysis.
+The old vinf search command retains the stricter literal phrase semantics.
+
+Fuzzy versus biological synonyms: scientific_name:Aaptosyaz~1 corrects a possible
+one-character spelling error. It does not declare differently named taxa equivalent.
+
+Range: the assignment gives Range as an example, alongside Boolean/Phrase/Fuzzy.
+This project implements and demonstrates the latter query types plus keyword fields;
+it does not advertise numerical range search over fish lengths.
+
+NEXT DEADLINE
+
+By 9 December: evaluate at least five queries against Google and FishBase, record
+actual results in text tables, make relevance judgments explicit, demonstrate the
+finished application and prepare the separate second-submission wiki report with
+architecture, dump extraction, join, schema/query types, comparisons, GitHub and ZIP.

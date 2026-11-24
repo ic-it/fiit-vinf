@@ -1,0 +1,47 @@
+<page>
+    <title>Ophthalmotilapia nasuta</title>
+    <ns>0</ns>
+    <id>12619697</id>
+    <revision>
+      <id>1314994656</id>
+      <parentid>1285385527</parentid>
+      <timestamp>2025-10-04T08:16:49Z</timestamp>
+      <contributor>
+        <username>Monkbot</username>
+        <id>20483999</id>
+      </contributor>
+      <minor />
+      <comment>/* top */ [[User:Monkbot/task 21: Replace page(s) with article-number|Monkbot/task 21: Replace page(s) with article-number]];</comment>
+      <origin>1314994656</origin>
+      <model>wikitext</model>
+      <format>text/x-wiki</format>
+      <text bytes="1275" sha1="441fatue12ukao2gywjb8d33qfqyzxr" xml:space="preserve">{{Short description|Species of fish}}
+{{Use dmy dates|date=March 2023}}
+{{Speciesbox
+| image =Ophthalmotilapia nasuta Kipili.jpg 
+| status = LC
+| status_system = IUCN3.1
+| status_ref = &lt;ref name=&quot;iucn status 16 November 2021&quot;&gt;{{cite iucn |author=Bigirimana, C. |date=2006 |title=''Ophthalmotilapia nasuta'' |volume=2006 |article-number=e.T60619A12385044 |doi=10.2305/IUCN.UK.2006.RLTS.T60619A12385044.en}}&lt;/ref&gt;| taxon = Ophthalmotilapia nasuta
+| authority = ([[Max Poll|Poll]] &amp; [[Hubert Matthes|Matthes]], 1962)
+| synonyms = 
+* ''Ophthalmochromis nasutus'' &lt;small&gt;Poll &amp; Matthes, 1962&lt;/small&gt;
+* ''Ophthalmotilapia nasutus'' &lt;small&gt;(Poll &amp; Matthes, 1962)&lt;/small&gt;
+}}
+
+'''''Ophthalmotilapia nasuta''''' is a species of [[cichlid]] [[endemism|endemic]] to [[Lake Tanganyika]].  It can reach a length of {{convert|20|cm|in}} [[fish measurement|TL]].  It can also be found in the [[aquarium]] trade.&lt;ref&gt;{{FishBase |genus= Ophthalmotilapia|species= nasuta| month = April | year = 2013}}&lt;/ref&gt;
+
+==References==
+{{Reflist}}
+
+{{Taxonbar|from=Q3317926}}
+
+[[Category:Ophthalmotilapia|nasuta]]
+[[Category:Fish described in 1962]]
+[[Category:Taxa named by Hubert Matthes]]
+[[Category:Taxa named by Max Poll]]
+[[Category:Taxonomy articles created by Polbot]]
+
+{{Pseudocrenilabrinae-stub}}</text>
+      <sha1>441fatue12ukao2gywjb8d33qfqyzxr</sha1>
+    </revision>
+  </page>

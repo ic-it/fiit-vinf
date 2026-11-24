@@ -1,0 +1,81 @@
+====== Second consultation - crawler ======
+
+[[user:icit:start|Project]] · [[user:icit:odovzdanie1|First-submission results]] · [[user:icit:implementation|Actual URL discovery code]]
+
+
+The course annotation above is retained unchanged. The implementation description below was updated on 27 October 2026; previous pilot versions remain in the page history.
+
+===== Traversal =====
+
+Seeds are arbitrary configured URLs. REGEX finds href attributes in the saved HTML, resolves relative links and base href, normalizes URLs and checks the configured scope. A stable UUIDv5 identifies each normalized URL. Discovery checks its task bucket; only a previously unknown URL is appended to a FIFO. Optional URL preference expressions select a separate preferred FIFO, consumed before the ordinary queue. The crawler does not recognize fish records or hardcode FishBase paths. Species-summary preference is local configuration; the later REGEX parser decides which saved pages contain usable species data.
+
+Scope can restrict hosts, subdomains, allow/deny URL expressions, depth, links per page, total pages and bytes. In this collection both fishbase.se hostnames are allowed; depth, width and aggregate page/byte caps are unset. HTML links can expand into catalogs, categories and other allowed pages. Images, CSS, JavaScript execution, form submission and API discovery are outside the crawler.
+
+{{:user:icit:architecture.png?950|Crawler and independent processing stages}}
+
+===== HTTP policy =====
+
+^ Final configuration ^ Value / reason ^
+| User-Agent | FIITVinfCrawler/0.10 (educational project; +https://vi2026.ui.sav.sk/doku.php); identifies the crawler and course |
+| Accept | text/html, application/xhtml+xml; the collected input is HTML |
+| Robots | respect; enforce Allow/Disallow and timing directives |
+| Minimum interval | 10 seconds per origin, or longer when robots/server cooldowns require it |
+| Pacing / workers / proxies | site / 1 / none; one shared origin clock |
+| Connect / read timeout | 10 / 30 seconds; bound failed connections and stalled reads |
+| Response / redirect cap | 10 MiB / 5; bound payload size and redirect chains |
+| Attempts per retry cycle | 3; exhausted URLs remain retained for explicit retry |
+
+Scope, robots and pacing are checked again for redirects. TLS verification remains enabled. Failed robots retrieval retains the task without fetching the page. Timing, attempts, worker claims and cooldowns persist across restarts. Separate datasets do not share a clock and must not crawl the same host concurrently.
+
+The policy can be changed explicitly. ''config-first'' keeps robots path restrictions but overrides robots timing with configured intervals; ''ignore'' skips robots enforcement. The final respectful configuration does not describe every historical request: metadata records 11,530 pages under config-first, four under ignore and 4,009 under respect. The saved bulk-run configuration had a one-second interval and eight workers, with site pacing and no proxies. Historical metadata records policy names, not every delay. After switching the saved project and dataset to respect/10s/one worker, a two-page controlled run completed without failed attempts. Configuration snapshots and that run's result are in the evidence archive.
+
+===== Saved data and recovery =====
+
+<code>
+crawled/
+  raw/<uuid>/
+    content.html.gz
+    metadata.json.gz
+    links.json.gz
+  crawl/
+    state.json
+    queue.jsonl
+    priority.jsonl
+    tasks/00.json ... ff.json
+    network.json
+    transports/direct/robots/
+    lock
+  catalog/
+    documents.jsonl
+    manifest.json
+</code>
+
+Each raw packet retains the HTML bytes after HTTP content decoding, requested/final URLs, retrieval time, response headers, status, encoding, depth, source UUID, robots policy, original SHA-256 and decoded/stored sizes. The HTML is otherwise unchanged. links.json keeps discovered links and scope decisions. Compression is optional; this corpus uses gzip. Consumers read compressed bytes in memory without unpacked intermediate files.
+
+The two JSONL FIFOs contain UUID references. A task's canonical URL, status and attempts live in one of 256 JSON buckets selected by UUID prefix. Saved byte cursors avoid sorting or rescanning the whole frontier on every iteration. A bounded bucket cache and membership cache reduce repeated disk reads. ''crawl status'' reads saved counters rather than walking 853,330 tasks.
+
+A recoverable write batches task updates, queue appends and counters. pending.json exists only during an unfinished write. A committed packet is recovered without HTTP after interruption; rediscovered links pass the same UUID membership check. Completion retains a task's identity for deduplication. Deferred, blocked and explicitly skipped tasks are not silently forgotten. ''retry'' starts another retry cycle while preserving cooldowns.
+
+The committed-document catalog is the parser's input. Parsing writes separate typed records, indexing writes a separate binary positional index, and search reads that index. No stage automatically invokes another.
+
+===== Observed corpus =====
+
+^ Measured on 27 October 2026 ^ Count ^
+| Saved HTML pages | 15,543 |
+| Original / gzip HTML bytes | 886,852,136 / 190,003,691 |
+| Discovered URLs | 853,330 |
+| Pending / deferred | 837,737 / 50 |
+| Blocked / skipped | 0 / 0 |
+
+Collection was stopped intentionally. The saved frontier is not empty, so the complete website is not claimed. ''doctor crawl --deep'' verified original hashes, packets, queue references, task counters and catalog without errors or warnings.
+
+<code bash>
+uv run vinf crawl status
+uv run vinf crawl policy --robots-strategy respect --delay 10 --rate-limit-scope site --workers 1
+uv run vinf crawl run --limit 20
+uv run vinf doctor crawl --deep
+uv run vinf crawl tasks --status deferred
+uv run vinf crawl retry --reason rate-limit
+</code>
+
+The run limit is additional successful pages for that invocation. Without a limit, crawling continues while work is ready. Ctrl+C preserves progress. Policy changes require an idle writer.

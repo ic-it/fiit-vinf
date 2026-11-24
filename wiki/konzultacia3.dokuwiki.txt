@@ -1,0 +1,348 @@
+====== Third consultation - Spark extraction and Wikipedia join ======
+
+[[user:icit:start|Project]] · [[user:icit:odovzdanie1|First submission]] · [[https://vi2026.ui.sav.sk/doku.php?id=projekty.pre.rok.2026#konzultacia3spracovanievelkychdat|Requirements]]
+
+Updated on 10 November 2026 for the third consultation. This stage moves extraction and linking to Apache Spark. The existing crawler, sequential parser and search index remain independent. No new FishBase HTTP collection was needed.
+
+===== What changed =====
+
+The new vinf-spark workspace library reuses FishBaseProfile and the shared Pydantic contracts. Spark mapPartitions executes the same REGEX extraction on all 15,543 saved HTML pages. A DataFrame window chooses one record per FishBase ID using newest retrieval time and then UUID, matching the first indexer's policy. Separate commands process Wikipedia XML and join the results.
+
+Measured with PySpark 3.5.9, Java 17 and master local[2]. This is a real Spark run on one laptop with two concurrent task slots and 4 output/shuffle partitions, not a multi-machine performance test. For a remote master, install the same workspace dependencies on executors and mount the raw packet paths identically. The input catalog is partitioned; raw pages are read by workers rather than collected on the driver.
+
+<code text>
+saved FishBase catalog + raw HTML.gz -> Spark workers / existing REGEX profile
+                                    -> outcomes + deduplicated species JSON.gz
+
+official Wikipedia XML.bz2          -> Spark file partitions / streaming REGEX workers
+                                    -> main-namespace pages JSON.gz
+
+FishBase species + Wikipedia pages  -> Spark scientific-name join
+                                    -> records / review / unmatched JSON.gz
+</code>
+
+===== Wikipedia input and extraction =====
+
+The complete title/offset index of the official 20261101 English Wikipedia multistream dump was scanned for all 9,724 FishBase scientific names and available common names. It found 5,507 scientific-title matches and 2,420 common-title matches. These select candidate input, not automatic entity links. Redirects found for corpus titles guide retrieval of their target articles in a subsequent pass.
+
+The resulting selection contains 4,492 non-overlapping byte ranges made of complete bzip2 members. Exact HTTP Content-Range and length are verified; a server returning the whole file is rejected. Downloaded bytes are original dump bytes, with URL, offsets, retrieval time and SHA-256 retained. Neighbouring pages within selected members are processed too. Existing verified ranges are reused on repeated fetches. This is an automatically selected corpus from across the whole dump, not two arbitrary dump parts or manually chosen API pages.
+
+^ Input ^ Stored bytes ^ Provenance ^
+| Complete title/offset index | 285,898,652 | [[https://dumps.wikimedia.org/enwiki/20261101/enwiki-20261101-pages-articles-multistream-index.txt.bz2|Official index]]; SHA-256 ''f2cf3829038dd7dff2a8618f0dd6da9358c961d53ca0c600b332c58eaef0aeca'' |
+| Selected original XML ranges | 604,635,453 | [[https://dumps.wikimedia.org/enwiki/20261101/enwiki-20261101-pages-articles-multistream.xml.bz2|Dated parent dump]]; per-range SHA-256 and offsets in metadata |
+
+The selected ranges contain 552,300 XML page records and 416,705 main-namespace pages. Original XML: 2,579,823,499 bytes; bzip2: 604,635,453 bytes. The index is reported separately and is not counted as XML content. These are file sizes, not network traffic. The full 27 GB parent XML file was not downloaded.
+
+Spark partitions the input file paths. Each worker reads concatenated bzip2 members directly, with a 256 KiB input chunk and a buffer bounded by one XML page plus that chunk. REGEX frames pages and extracts page ID, namespace, title, revision, timestamp and text; html.unescape decodes XML entities. Further expressions select a Speciesbox/Taxobox, explicit taxon or genus/species fields, optional family/order/authority/status, categories and a lead paragraph. No XML/HTML DOM parser, XPath or MediaWiki API is used. Raw XML remains compressed and unchanged. One file is handled by one task, so input parallelism is bounded by the number of dump files; it does not split a single bzip2 file between workers.
+
+===== Join rule and useful attributes =====
+
+The join key is the scientific name normalized with Unicode NFKC, casefold and collapsed whitespace, shared with FishBase. Common names help retrieve candidates but do not establish a link: several species can share one, and Wikipedia titles may use common names. For example, Glauert's anglerfish contains the scientific name Allenichthys glauerti.
+
+Only main-namespace, non-redirect, non-disambiguation pages with an extracted scientific name participate. An exact key with more than one Wikipedia candidate is marked ambiguous. Conflicting explicit families are kept for review. An absent family is marked not_available, not reported as confirmed agreement. Accepted links preserve both sources; one source's conservation status does not overwrite the other.
+
+Useful Wikipedia additions are the lead description, categories, explicit taxonomy/authority and conservation status with its status system. Page ID, revision ID, URL, timestamp, input file and wikitext SHA-256 provide provenance. These fields are available for the next search-index stage; the first submission's index has not been silently replaced.
+
+===== Observed results =====
+
+^ Metric ^ Count ^
+| FishBase raw pages processed by Spark | 15,543 |
+| FishBase: rejected | 283 |
+| FishBase: accepted | 15,260 |
+| FishBase: unique species | 9,724 |
+| FishBase: duplicates | 5,536 |
+| Wikipedia: main namespace pages | 416,705 |
+| Wikipedia: redirect pages | 249,856 |
+| Wikipedia: species named pages | 17,295 |
+| Wikipedia: disambiguation pages | 5,263 |
+| Join: fishbase species | 9,724 |
+| Join: wiki species candidates | 17,294 |
+| Join: linked species | 5,157 |
+| Join: unique wikipedia pages | 5,157 |
+| Join: unmatched species | 4,567 |
+| Join: ambiguous candidates | 4 |
+| Join: taxonomy conflicts | 0 |
+
+Unmatched records are also diagnosed against the complete index and retrieved canonical pages:
+
+^ Reason ^ Species ^
+| ambiguous | 2 |
+| common title only | 73 |
+| different taxonomic name | 192 |
+| no exact title in index | 4,131 |
+| target without supported taxon | 169 |
+
+There are 5,157 distinct linked Wikipedia pages, covering 53.03% of the 9,724 FishBase records. The initial two-part sample linked only 29 species (0.30%); it was replaced by complete-index-guided selection. Unmatched means no accepted candidate under the current extraction and exact-taxon rule, not proof that Wikipedia has no article. Redirects can guide retrieval; taxonomic synonym links and inherited automatic-taxonomy rendering are not inferred.
+
+^ Scientific name ^ FishBase ID ^ Wikipedia article / page ID ^ Family check ^ FishBase / Wiki status ^
+| Aaptosyax grypus | [[https://www.fishbase.se/summary/16239|16239]] | [[https://en.wikipedia.org/wiki/Giant_salmon_carp|Giant salmon carp]] / 12183217 | not_available | CR / CR |
+| Abalistes filamentosus | [[https://www.fishbase.se/summary/62612|62612]] | [[https://en.wikipedia.org/wiki/Abalistes_filamentosus|Abalistes filamentosus]] / 45410721 | not_available | LC / LC |
+| Abantennarius analis | [[https://www.fishbase.se/summary/SpeciesSummary.php?id=11144&lang=English|11144]] | [[https://en.wikipedia.org/wiki/Abantennarius_analis|Abantennarius analis]] / 69686602 | not_available | LC / LC |
+| Abantennarius bermudensis | [[https://www.fishbase.se/summary/16680|16680]] | [[https://en.wikipedia.org/wiki/Abantennarius_bermudensis|Abantennarius bermudensis]] / 69687207 | not_available | LC / LC |
+| Abantennarius sanguineus | [[https://www.fishbase.se/summary/13451|13451]] | [[https://en.wikipedia.org/wiki/Abantennarius_sanguineus|Abantennarius sanguineus]] / 40429024 | not_available | LC / LC |
+
+An actual saved example:
+
+<code json>
+{
+  "source_id": "16239",
+  "scientific_name": "Aaptosyax grypus",
+  "url": "https://www.fishbase.se/summary/16239",
+  "wiki_page_id": 12183217,
+  "wiki_title": "Giant salmon carp",
+  "wiki_url": "https://en.wikipedia.org/wiki/Giant_salmon_carp",
+  "family_check": "not_available",
+  "wiki_status": "CR",
+  "fishbase_status": "CR",
+  "wiki_description": "The giant salmon carp It is endemic to the middle reaches of the Mekong River in northern Cambodia, Laos, and Thailand. Its population is much reduced (>90%) as a result of overfishing and habitat degradation, and it is now considered Critically Endangered."
+}
+</code>
+
+===== Verification =====
+
+The independent scripts/validate_spark.py audit compared all 9,724 Spark species records and source metadata with the original sequential parser's deduplicated results. They are equal. It also sequentially framed the original bzip2 XML without Hadoop and checked the complete set of 416,705 main-namespace page IDs against Spark output. Accepted links have matching scientific keys and no accepted redirects, disambiguations or family conflicts. Linked and unmatched identities form a complete, disjoint partition of the FishBase species set. The audit completed with no errors.
+
+Two small extraction test methods use seven unchanged official XML pages. They check scientific names, conservation fields, lead descriptions, revision provenance, inline parameters, nested references, disambiguated genus names and preservation of subspecies rank. They also cover empty parameters, redirects, excluded namespaces and streaming across concatenated bzip2 members. One HTTP-range test checks exact ranges, verified reuse and rejection of full-file responses. The existing FishBase extraction tests remain in place.
+
+^ Stage ^ Elapsed seconds ^
+| fishbase | 20.085 |
+| wikipedia | 80.249 |
+| join | 10.296 |
+
+Timings are individual local runs with different I/O and Spark startup costs. They are not a controlled speedup or cluster-scaling benchmark. The saved Spark physical plan records the actual join/exchanges used.
+
+===== Independent commands and files =====
+
+<code bash>
+uv sync --locked --extra spark
+uv run --extra spark vinf spark fishbase
+uv run --extra spark vinf spark plan
+uv run --extra spark vinf spark fetch
+uv run --extra spark vinf spark wiki
+uv run --extra spark vinf spark join
+uv run --extra spark vinf spark status
+uv run --extra spark vinf spark examples --limit 3
+uv run --extra spark vinf spark coverage
+uv run --extra spark python scripts/validate_spark.py
+</code>
+
+Download the dated complete multistream index into data/wikipedia/index first, with its publisher dumpstatus.json. plan reads the local index and corpus names; fetch retrieves its ranges. Each command is independent. Repeating plan after Wikipedia extraction incorporates discovered redirect targets; fetch reuses verified ranges, and wiki/join regenerate with --overwrite. Status and examples read manifests without starting Java or scanning all data. A separate vinf-spark CLI uses the same library and supports --project.
+
+<code text>
+data/fishbase/crawled/             existing immutable FishBase input
+data/spark/fishbase/species/       deduplicated Spark extraction, JSON.gz parts
+data/spark/fishbase/outcomes/      UUID, selection outcome and errors
+data/wikipedia/index/             complete title index and publisher metadata
+data/wikipedia/selection.json     title hits, offsets and selected byte ranges
+data/wikipedia/selected/          original XML.bz2 ranges and download metadata
+data/wikipedia/parsed/pages/      extracted main-namespace pages, JSON.gz parts
+data/linked/records/              accepted FishBase + Wikipedia records
+data/linked/review/               rejected ambiguous/conflicting candidates
+data/linked/unmatched/            source IDs and reasons, without copied full text
+data/linked/spark-plan.txt         actual Spark execution plan
+reports/consultation3/            manifests, logs, independent audit and tests
+</code>
+
+Every Spark stage has a manifest; generated JSON is partitioned and gzip-compressed in this run. Pass --compression none for plain readable JSON. Spark's _SUCCESS and checksum files are framework output markers. Temporary persisted RDDs use DISK_ONLY and are released after processing; full datasets are not collected into driver Python memory. Source raw packets, the old parsed snapshot and the old search index are retained independently.
+
+===== Actual REGEX code =====
+
+The following is the executable Wikipedia extractor, not pseudocode:
+
+<code python>
+"""REGEX extraction from MediaWiki XML records and unrendered wikitext.
+
+Extraction uses REGEX without an XML/HTML parser, XPath or MediaWiki API. This is a
+deliberately limited extractor for the common taxobox/speciesbox conventions.
+"""
+
+import bz2
+import gzip
+import hashlib
+import html
+import re
+from pathlib import Path
+from urllib.parse import quote
+
+from vinf_core.records import species_key
+
+from vinf_spark.models import WikiPage
+
+VERSION = "mediawiki-taxobox-regex/1"
+PAGE = re.compile(r"<page>\s*(.*?)$", re.DOTALL)
+TEXT = re.compile(r"<text\b[^>]*>(.*?)</text>|<text\b[^>]*/>", re.DOTALL)
+TAXOBOX = re.compile(
+    r"\{\{\s*(?:speciesbox|subspeciesbox|taxobox|automatic[ _]taxobox)\s*\n(.*?)(?:\n\}\}|\Z)",
+    re.IGNORECASE | re.DOTALL,
+)
+PARAMETER = re.compile(
+    r"\|[ \t]*([a-z_0-9 ]+)[ \t]*=[ \t]*(.*?)(?=\|[ \t]*[a-z_0-9 ]+[ \t]*=|\n|$)",
+    re.MULTILINE | re.IGNORECASE,
+)
+NESTED_TEMPLATE = re.compile(
+    r"\{\{(?!\s*(?:speciesbox|subspeciesbox|taxobox|automatic[ _]taxobox)\b)[^{}]*\}\}",
+    re.IGNORECASE,
+)
+LATIN = re.compile(r"[A-Z][a-zA-Z-]+ [a-z][a-z-]+(?: [a-z][a-z-]+)?")
+PAGE_END = re.compile(r"</page\s*>")
+
+
+def page_fragments(path: Path):
+    """Stream concatenated bzip2 members without Hadoop split-boundary overlap.
+
+    The buffer is bounded by one XML page plus a 256 KiB input chunk. Dump
+    files are Spark work items; neither a whole file nor its XML tree is loaded.
+    """
+    opener = (
+        bz2.open
+        if path.suffix == ".bz2"
+        else gzip.open
+        if path.suffix == ".gz"
+        else open
+    )
+    with opener(path, "rt", encoding="utf-8") as stream:
+        buffer = ""
+        for chunk in iter(lambda: stream.read(256 * 1024), ""):
+            buffer += chunk
+            while match := PAGE_END.search(buffer):
+                fragment, buffer = buffer[: match.start()], buffer[match.end() :]
+                if "<page>" in fragment:
+                    yield fragment
+        if "<page>" in buffer:
+            raise ValueError(f"Incomplete XML page in {path}")
+
+
+def clean(value: str) -> str:
+    value = re.sub(r"<!--.*?-->", " ", value, flags=re.DOTALL)
+    value = re.sub(
+        r"<ref\b[^>]*>.*?</ref\s*>|<ref\b[^>]*/>",
+        " ",
+        value,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    value = re.sub(r"\[\[(?:[^\]\n|]+\|)?([^\]\n]+)\]\]", r"\1", value)
+    value = re.sub(r"\{\{[^{}]*\}\}", " ", value)
+    value = re.sub(r"<[^>]*>", " ", value)
+    return " ".join(html.unescape(value).replace("'''", "").replace("''", "").split())
+
+
+def lead_text(wikitext: str) -> str:
+    # A lead paragraph usually starts with the bold article name after infoboxes.
+    match = re.search(
+        r"^(?![|{}!=#*])(?=[^\n]*''')[^\n]+(?:\n(?!\s*\n|==)[^\n]+)*",
+        wikitext,
+        re.MULTILINE,
+    )
+    return clean(match[0])[:4000] if match else ""
+
+
+def extract_page(fragment: str, dump_file: str) -> WikiPage | None:
+    page = PAGE.search(fragment)
+    if not page:
+        return None  # trailing </mediawiki>, not an article
+    xml = page[1]
+    namespace = re.search(r"<ns>(\d+)</ns>", xml)
+    if not namespace or namespace[1] != "0":
+        return None
+    title = re.search(r"<title>(.*?)</title>", xml, re.DOTALL)
+    page_id = re.search(r"<id>(\d+)</id>", xml)
+    text = TEXT.search(xml)
+    if not title or not page_id or text is None:
+        raise ValueError("Main-namespace page is missing title, ID or text.")
+    title = html.unescape(title[1])
+    wikitext = html.unescape(text[1] or "")
+    redirect = re.search(r'<redirect\b[^>]*title="([^"]*)"', xml)
+    revision = re.search(r"<revision>\s*<id>(\d+)</id>", xml)
+    timestamp = re.search(r"<timestamp>(.*?)</timestamp>", xml)
+    box_view = re.sub(
+        r"<ref\b[^>]*>.*?</ref\s*>|<ref\b[^>]*/>",
+        " ",
+        wikitext,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    for _ in range(16):
+        box_view, removed = NESTED_TEMPLATE.subn(" ", box_view)
+        if not removed:
+            break
+    box = TAXOBOX.search(box_view)
+    fields = (
+        {
+            key.strip().lower().replace(" ", "_"): clean(value) or None
+            for key, value in PARAMETER.findall(box[1])
+        }
+        if box
+        else {}
+    )
+    name = fields.get("taxon") or fields.get("binomial")
+    genus, species = fields.get("genus"), fields.get("species")
+    if genus:
+        genus = re.sub(r"^([A-Z][a-zA-Z-]+)\s*\([^)]*\)$", r"\1", genus)
+    if not name and genus and species:
+        name = f"{genus} {species}"
+        if fields.get("subspecies"):
+            name += f" {fields['subspecies']}"
+    name = name if name and LATIN.fullmatch(name) else None
+    return WikiPage(
+        page_id=int(page_id[1]),
+        title=title,
+        revision_id=int(revision[1]) if revision else None,
+        timestamp=timestamp[1] if timestamp else None,
+        url="https://en.wikipedia.org/wiki/"
+        + quote(title.replace(" ", "_"), safe="()_"),
+        dump_file=dump_file,
+        wikitext_sha256=hashlib.sha256(wikitext.encode()).hexdigest(),
+        redirect=html.unescape(redirect[1]) if redirect else None,
+        scientific_name=name,
+        species_key=species_key(name) if name else None,
+        genus=genus or (name.split()[0] if name else None),
+        family=fields.get("familia") or fields.get("family"),
+        order=fields.get("ordo") or fields.get("order"),
+        authority=fields.get("binomial_authority") or fields.get("authority"),
+        status=fields.get("status"),
+        status_system=fields.get("status_system"),
+        description=lead_text(wikitext),
+        categories=tuple(
+            sorted(set(re.findall(r"\[\[Category:([^\]|]+)", wikitext, re.IGNORECASE)))
+        ),
+        disambiguation=bool(
+            re.search(
+                r"\{\{\s*(?:disambiguation|disambig|dab)\b", wikitext, re.IGNORECASE
+            )
+        ),
+    )
+</code>
+
+FishBase worker extraction reuses the original profile:
+
+<code python>
+def _fishbase_partition(lines, crawled: str):
+    profile = FishBaseProfile()
+    for line in lines:
+        metadata = DocumentMetadata.model_validate_json(line)
+        source = source_document(metadata)
+        body = read_body(Path(crawled), source)
+        selection = profile.select(body)
+        record = error = None
+        status = ParseStatus.REJECTED
+        if selection.selected:
+            try:
+                record = profile.extract(body, source)
+                status = ParseStatus.ACCEPTED
+            except ValueError as exc:
+                error, status = str(exc), ParseStatus.ERROR
+        yield ParsedPage(
+            source=source,
+            fingerprint=fingerprint(profile.version, source.model_dump_json()),
+            status=status,
+            reason=selection.reason,
+            record=record,
+            error=error,
+        ).model_dump_json()
+</code>
+
+===== Downloads =====
+
+  * {{:user:icit:vinf_spark_source_20261110.zip|Current code, uv lockfile, documentation and tests}}
+  * {{:user:icit:vinf_spark_evidence_20261110.zip|Measured results, independent audit, physical plan and offline mini-demo}}
+
+The full inputs and generated full-corpus outputs remain local; the small demo is explicitly a subset. Wikipedia texts retain the original CC BY-SA attribution and revision provenance. The course wiki's Public Domain license does not relicense Wikipedia or FishBase source data.

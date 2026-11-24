@@ -1,0 +1,46 @@
+{
+  "$defs": {
+    "QueryCase": {
+      "additionalProperties": false,
+      "properties": {
+        "question": {
+          "minLength": 1,
+          "title": "Question",
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "query": {
+          "title": "Query",
+          "type": "string"
+        }
+      },
+      "required": [
+        "question",
+        "description",
+        "query"
+      ],
+      "title": "QueryCase",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "queries": {
+      "items": {
+        "$ref": "#/$defs/QueryCase"
+      },
+      "minItems": 3,
+      "title": "Queries",
+      "type": "array"
+    }
+  },
+  "required": [
+    "queries"
+  ],
+  "title": "QuerySet",
+  "type": "object"
+}

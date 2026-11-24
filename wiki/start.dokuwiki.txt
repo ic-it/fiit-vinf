@@ -1,0 +1,51 @@
+====== Illia Chaban - Fish species search ======
+
+Search fish descriptions from [[https://www.fishbase.se/|FishBase]] by words, exact phrases and Boolean expressions. The current application has independent crawl, REGEX parsing, indexing and search commands. It uses files rather than a database. Source-specific facts such as taxonomy, environment, length and conservation status are extracted; this submission searches their text and does not provide numeric attribute filters.
+
+On 27 October 2026 I stopped collection at 15,543 HTML pages: 886,852,136 original bytes, stored as 190,003,691 bytes of gzip. The parser accepted 15,260 pages and rejected 283, with no extraction errors. Deduplication by FishBase ID produced 9,724 indexed source records. The remaining frontier is preserved; this is a partial corpus.
+
+The first submission includes a self-written positional TF index, two TF-IDF variants and BM25, comparison on five described queries, five extraction examples and five observed question/query examples. Bonus evidence includes 20 real species-page extraction cases and tiktoken counts. The third consultation adds Spark extraction and Wikipedia linking. The fourth consultation adds native PyLucene indexing and a measured old/new search comparison; judged relevance evaluation remains for the final stage.
+
+  * [[user:icit:konzultacia1|First consultation: sources and initial questions]]
+  * [[user:icit:konzultacia2|Second consultation: crawler and collection policy]]
+  * [[user:icit:odovzdanie1|First submission: report and measured results]]
+  * [[user:icit:konzultacia3|Third consultation: Spark extraction and Wikipedia join]]
+  * [[user:icit:konzultacia4|Fourth consultation: PyLucene index and comparison]]
+  * [[https://github.com/ic-it/fiit-vinf|Current source on GitHub]]
+  * [[user:icit:implementation|Executable REGEX source and full extracted records]]
+  * [[https://vi2026.ui.sav.sk/doku.php?id=projekty.pre.rok.2026|Course requirements and deadlines]]
+
+===== Downloads =====
+
+  * {{:user:icit:vinf_source_20261124.zip|Current source: PyLucene, Spark, original search, documentation and tests}}
+  * {{:user:icit:vinf_lucene_evidence_20261124.zip|Fourth consultation: measured comparison, native audit and offline subset}}
+
+  * {{:user:icit:vinf_spark_source_20261110.zip|Spark extension: current code, environment, documentation and tests}}
+  * {{:user:icit:vinf_spark_evidence_20261110.zip|Spark extension: measured results, audit and offline mini-demo}}
+
+  * {{:user:icit:vinf_source_20261027.zip|Source code, locked environment, schemas, documentation and tests}}
+  * {{:user:icit:vinf_evidence_20261027.zip|Full-corpus measurements, checks, ranking comparison and small offline demo}}
+  * {{:user:icit:vinf_gold_tests_20261027.zip|20 real species extraction cases, two negative pages and expected fields}}
+
+The full raw corpus and crawl frontier remain local. The evidence archive contains a small reproducible subset, not the complete collection. Downloaded FishBase pages retain their original ownership; the wiki's text license does not relicense source data.
+
+===== Two-to-five-minute demo =====
+
+Unzip the source archive into a new directory. Unzip the evidence archive and copy its ''demo'' directory into the source directory. From the source directory:
+
+<code bash>
+uv sync --locked
+uv run vinf --project demo parse run --compression gzip
+uv run vinf --project demo index build --rebuild
+uv run vinf --project demo search query '(marine OR brackish) (Atlantic OR Pacific) (benthic OR benthopelagic)' --method tfidf --explain --limit 3
+uv run vinf --project demo search query '"Least Concern" (tropical OR subtropical)' --highlight --limit 3
+uv run vinf --project demo search compare
+</code>
+
+Only dependency installation needs network access. Parsing the demo produces 15 accepted species pages and one rejected family page. Its index contains 15 records. The demo packets preserve the original HTML and metadata; its catalog is a read-only subset and does not contain a resumable crawl frontier. Full-corpus results are in the first-submission report and evidence archive.
+
+Run the independent extraction checks from the source directory:
+
+<code bash>
+uv run python -m unittest discover -s tests -p test_extraction_gold.py -v
+</code>

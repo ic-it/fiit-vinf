@@ -1,0 +1,214 @@
+====== First submission - FishBase species search ======
+
+[[user:icit:start|Project]] · [[user:icit:konzultacia2|Crawler]] · [[user:icit:implementation|Code and full examples]]
+
+Snapshot: 2026-10-25–2026-10-27 (UTC). I collected 15,543 HTML pages and indexed 9,724 source records. Collection was stopped deliberately; 837,737 pending URLs and 50 deferred tasks remain saved. This is a partial corpus, not a complete FishBase mirror.
+
+===== Goal, source and five extraction examples =====
+
+Search English fish descriptions from [[https://www.fishbase.se/|FishBase]] using words, phrases and Boolean expressions. A generic crawler collects linked HTML; a separate REGEX extractor selects species summaries and extracts names, taxonomy, environment, distribution, reported maximum length, biology and available IUCN status. Missing facts stay null.
+
+^ Saved source ^ FishBase ID ^ Environment ^ Reported maximum ^ IUCN ^
+| [[https://fishbase.se/summary/Gadus_macrocephalus.html|Gadus macrocephalus]] | 308 | marine, brackish | 119 cm TL male/unsexed | NE |
+| [[https://www.fishbase.se/summary/SpeciesSummary.php?id=2081&lang=English|Rhincodon typus]] | 2081 | marine | 2000 cm TL female | EN |
+| [[https://www.fishbase.se/summary/48782|Plectrochilus wieneri]] | 48782 | freshwater | 7.9 cm NG male/unsexed | LC |
+| [[https://www.fishbase.se/summary/65918|Ophthalmolebias ilheusensis]] | 65918 | freshwater | Not reported | CR |
+| [[https://www.fishbase.se/summary/Myliobatis_freminvillei.html|Myliobatis freminvillei]] | 1251 | marine, brackish | 129 cm WD male/unsexed | VU |
+
+Units are normalized to centimetres while TL/SL/width types are preserved. These are reported species maxima, not individual measurements. [[user:icit:implementation|Full JSON examples]] retain source URLs, UUIDs, retrieval times and original SHA-256.
+
+===== Search scenarios and observed answers =====
+
+Each scenario states a search intention and its literal text conditions. Words can occur in different sections of a description; quoted phrases must match inside one section. The returned text provides the context for interpreting habitats, diet and conservation status. Counts refer to this snapshot, and the displayed species are examples of matching descriptions.
+
+==== Query 1 ====
+
+**Which marine fish descriptions refer to the tropical or subtropical Western Pacific?**
+
+<code>
+marine "Western Pacific" (tropical OR subtropical) -freshwater
+</code>
+
+Explore a region and climate together. The text must contain marine, the exact phrase Western Pacific, and tropical or subtropical. The standalone word freshwater excludes the document, including descriptions of species that also occur in fresh water.
+
+Observed answer: 528 matching descriptions. First three with TF-IDF cosine: Odontanthias unimaculatus; Odontanthias rhodopeplus; Taenioides eruptionis.
+
+==== Query 2 ====
+
+**Which freshwater fish descriptions mention threatened species in the Mekong or Chao Phraya basins?**
+
+<code>
+freshwater (Mekong OR "Chao Phraya") (Endangered OR Vulnerable)
+</code>
+
+Find regional conservation candidates. The text must contain freshwater, either Mekong or the exact phrase Chao Phraya, and Endangered or Vulnerable. Endangered also matches the word in Critically Endangered. A mention of either river is sufficient; the query does not require both.
+
+Observed answer: 17 matching descriptions. First three with TF-IDF cosine: Oxygaster pointoni; Ambastaia sidthimunki; Oreoglanis siamensis.
+
+==== Query 3 ====
+
+**Which marine descriptions combine reef habitats with crustacean or mollusk feeding terms?**
+
+<code>
+marine ("coral reefs" OR "rocky reefs") (crustaceans OR mollusks OR molluscs)
+</code>
+
+Explore habitat and diet vocabulary together. The text must contain marine, either exact phrase coral reefs or rocky reefs, and at least one of crustaceans, mollusks or molluscs. Both spellings of mollusks are explicit alternatives. Read the returned description to check the feeding relationship.
+
+Observed answer: 54 matching descriptions. First three with TF-IDF cosine: Choerodon robustus; Polyamblyodon gibbosum; Symphorichthys spilurus.
+
+==== Query 4 ====
+
+**Which freshwater fish descriptions connect cave habitats with blindness?**
+
+<code>
+freshwater (cave OR caves OR subterranean) (blind OR eyeless)
+</code>
+
+Find candidates for studying cave-related loss of vision. The text must contain freshwater, at least one of cave, caves or subterranean, and blind or eyeless. Singular and plural forms are written explicitly because the search does not perform stemming.
+
+Observed answer: 14 matching descriptions. First three with TF-IDF cosine: Oxyeleotris caeca; Ophisternon candidum; Sinocyclocheilus aquihornes.
+
+==== Query 5 ====
+
+**Which freshwater fish descriptions mention migration in Europe or the Danube without marine references?**
+
+<code>
+freshwater (migratory OR potamodromous) (Europe OR Danube) -marine
+</code>
+
+Explore freshwater migration with European distribution terms. The text must contain freshwater, migratory or potamodromous, and Europe or Danube. The standalone word marine excludes the document. Danube is an alternative to Europe, so a description need not contain the broader region's name.
+
+Observed answer: 33 matching descriptions. First three with TF-IDF cosine: Leuciscus leuciscus; Leuciscus aspius; Barbus barbus.
+
+===== Libraries and architecture =====
+
+Python 3.12 and uv manage four independent stage libraries and vinf-core. Core owns Pydantic file contracts; crawl, parse, index and search have separate CLI commands and separate data directories. Requests handles HTTP, Protego evaluates robots, Typer/Rich provide the CLI, and standard gzip/lzma handle optional compression. tiktoken is used only for measurements. Extraction, index construction and ranking are self-written; no database or search framework is used.
+
+{{:user:icit:architecture.png?950|Crawler and independent processing stages}}
+
+===== HTTP policy and actual metadata =====
+
+Final settings: robots=respect; minimum interval 10s per origin; site pacing; 1 worker; no proxies. Longer robots timing and server cooldowns take precedence. Connect/read timeouts are 10/30s, responses are limited to 10 MiB and redirects to five. These bound waits and response size. Redirects are checked again; TLS verification stays enabled.
+User-Agent: ''FIITVinfCrawler/0.10 (educational project; +https://vi2026.ui.sav.sk/doku.php)''. Accept requests HTML/XHTML. Failures remain available for retry.
+The collection used several policies. The table below counts the policy recorded on each page, including ignore. The saved bulk-run configuration used config-first with a one-second interval: path restrictions applied, but robots timing was overridden. The four ignore pages were collected without enforcing robots. Metadata records the policy name, not every historical delay. Before submission I changed the dataset and project to respect/10s and completed a separate two-page check. Historical metadata is unchanged.
+
+^ Recorded robots policy ^ Saved pages ^
+| config-first | 11,530 |
+| ignore | 4 |
+| respect | 4,009 |
+
+Example saved metadata:
+
+^ Field ^ Actual value ^
+| doc_id | 00002f66-c020-5cce-bb3d-ccc001c00e05 |
+| requested_url | https://www.fishbase.se/summary/SpeciesSummary.php?id=55821 |
+| final_url | https://www.fishbase.se/summary/55821 |
+| fetched_at | 2026-10-26 16:59:51.200750+00:00 |
+| http_status | 200 |
+| content_type | text/html; charset=UTF-8 |
+| encoding | UTF-8 |
+| compression | gzip |
+| size_bytes | 48739 |
+| stored_size_bytes | 11075 |
+| depth | 2 |
+| discovered_from | 0f3be4c0-9f15-5061-acce-8ea3b13be1f0 |
+| user_agent | FIITVinfCrawler/0.10 (educational project; +https://vi2026.ui.sav.sk/doku.php) |
+| robots_strategy | config-first |
+| elapsed_seconds | 30.414648 |
+| response_headers | {'date': 'Mon, 26 Oct 2026 16:59:40 GMT', 'server': 'Apache/2.4.69 (Ubuntu)', 'set-cookie': 'language=English; expires=Wed, 25 Nov 2026 16:59:40 GMT; Max-Age=2592000; path=/', 'expires': 'Mon, 02 Nov 2026 16:59:40 GMT', 'vary': 'Accept-Encoding', 'content-encoding': 'gzip', 'cache-control': 'max-age=0, no-cache, no-store', 'content-length': '11128', 'keep-alive': 'timeout=3, max=100', 'connection': 'Keep-Alive', 'content-type': 'text/html; charset=UTF-8'} |
+| sha256 | cd6c27bbf7118b6b40aa1cebe5ffd184db9555668252449de456aebf90c62e7e |
+
+===== Implemented REGEX code =====
+
+The [[user:icit:implementation|implementation appendix]] includes the actual URL extraction source (tag/attribute regexes, relative-link resolution and scope checks) and entity extraction source (summary selection, fields and numeric normalization). Both are current executable source, not pseudocode; complete files are also in the source ZIP. No DOM parser or XPath is used.
+
+===== TF index and three ranking methods =====
+
+The indexer selects the newest record per (source, FishBase ID), assigns dense docIDs and externally sorts term occurrences with bounded buffers. Postings store TF, word positions, UTF-8 offsets and section identity. DF is computed during construction. An on-disk sorted lexicon addresses blocks in postings.bin. Search text is stored once; queries merge posting streams and keep a top-k heap.
+One shared index contains 9,724 documents, 56,649 terms and 3,135,598 word occurrences, after removing 5,536 duplicate source records. Stop words are disabled in this snapshot. A changed parsed catalog triggers a rebuild; unchanged input is verified and reused. Search never builds an index.
+
+^ Method ^ IDF and scoring ^
+| TF-IDF sum | %%idf=ln(N/DF); sum(TF×idf)%% over distinct positive query terms; no length normalization |
+| TF-IDF cosine | %%idf=ln((N+1)/(DF+1))+1; weight=(1+ln(TF))×idf%%; normalized query-document dot product |
+| BM25 (additional experiment) | %%idf=ln(1+(N−DF+0.5)/(DF+0.5))%%; TF saturation and length normalization; k1=1.2, b=0.75 |
+
+The required comparison uses the two TF-IDF variants with non-probabilistic IDF. BM25 is an additional experiment.
+Quoted phrases require consecutive words in one section and matching punctuation in the stored span. Case, NFKC and whitespace are normalized. reef-associated is a different token from reef. [[user:icit:implementation|Query semantics and optional stop words]].
+
+===== Ranking comparison (5 queries) =====
+
+All methods use the same index and query expression. Scores have different scales; compare ordering. This comparison has no human relevance judgments and does not establish which method is better. Full top-five results and per-term explanations are in the evidence archive.
+
+Query numbers refer to the scenarios above.
+
+^ Scenario ^ Method ^ Matches ^ Top three: species (score) ^
+| Query 1 | tfidf | 528 | Odontanthias unimaculatus (0.140651); Odontanthias rhodopeplus (0.139627); Taenioides eruptionis (0.121136) |
+| Query 1 | tfidf-sum | 528 | Luvarus imperialis (9.973389); Echiodon anchipterus (9.354172); Symphurus thermophilus (9.273071) |
+| Query 1 | bm25 | 528 | Echiodon anchipterus (6.445036); Odontanthias rhodopeplus (6.309380); Odontanthias unimaculatus (6.302622) |
+| Query 2 | tfidf | 17 | Oxygaster pointoni (0.205917); Ambastaia sidthimunki (0.186276); Oreoglanis siamensis (0.143961) |
+| Query 2 | tfidf-sum | 17 | Pangasianodon hypophthalmus (36.789801); Probarbus jullieni (32.772235); Ambastaia sidthimunki (24.737102) |
+| Query 2 | bm25 | 17 | Oxygaster pointoni (19.466316); Ambastaia sidthimunki (18.615064); Oreoglanis siamensis (16.285219) |
+| Query 3 | tfidf | 54 | Choerodon robustus (0.138676); Polyamblyodon gibbosum (0.127998); Symphorichthys spilurus (0.126739) |
+| Query 3 | tfidf-sum | 54 | Paraplotosus albilabris (18.224544); Bodianus perditio (17.574547); Lutjanus bengalensis (16.264142) |
+| Query 3 | bm25 | 54 | Choerodon robustus (15.444364); Polyamblyodon gibbosum (13.368492); Paraplotosus albilabris (13.014703) |
+| Query 4 | tfidf | 14 | Oxyeleotris caeca (0.165538); Ophisternon candidum (0.142473); Sinocyclocheilus aquihornes (0.134834) |
+| Query 4 | tfidf-sum | 14 | Astyanax jordani (25.641905); Typhliasina pearsei (24.662823); Ophisternon candidum (24.072620) |
+| Query 4 | bm25 | 14 | Oxyeleotris caeca (18.341448); Ophisternon candidum (18.154624); Barbodes klapanunggalensis (17.172727) |
+| Query 5 | tfidf | 33 | Leuciscus leuciscus (0.152329); Leuciscus aspius (0.109795); Barbus barbus (0.094698) |
+| Query 5 | tfidf-sum | 33 | Leuciscus leuciscus (30.458558); Leuciscus aspius (23.841155); Barbus barbus (23.119637) |
+| Query 5 | bm25 | 33 | Leuciscus leuciscus (15.751910); Leuciscus aspius (13.048976); Barbus barbus (11.402890) |
+
+  * Query 1: TF-IDF sum starts with Luvarus imperialis (429 words; TF(western)=3). Cosine starts with Odontanthias unimaculatus; BM25 starts with Echiodon anchipterus.
+  * Query 2: TF-IDF sum starts with Pangasianodon hypophthalmus (644 words; TF(mekong)=6). Cosine starts with Oxygaster pointoni; BM25 starts with Oxygaster pointoni.
+  * Query 3: TF-IDF sum starts with Paraplotosus albilabris (403 words; TF(coral)=3). Cosine starts with Choerodon robustus; BM25 starts with Choerodon robustus.
+  * Query 4: TF-IDF sum starts with Astyanax jordani (377 words; TF(cave)=3). Cosine starts with Oxyeleotris caeca; BM25 starts with Oxyeleotris caeca.
+  * Query 5: TF-IDF sum starts with Leuciscus leuciscus (634 words; TF(danube)=2). Cosine starts with Leuciscus leuciscus; BM25 starts with Leuciscus leuciscus.
+
+Linear TF rewards repeated query words without a document-length penalty. Cosine normalizes the complete weighted vector; BM25 saturates TF and adjusts for document length. The changed leaders show that these choices affect ordering even though Boolean candidate sets are identical.
+
+===== Corpus statistics and bonuses =====
+
+^ Metric ^ Value ^
+| Saved HTML pages | 15,543 |
+| HTML bytes before compression | 886,852,136 |
+| HTML bytes in gzip | 190,003,691 |
+| Accepted / rejected / errors | 15260 / 283 / 0 |
+| Distinct scientific-name keys | 9,724 |
+| Accepted pages without a source ID | 0 |
+| Indexed documents / word occurrences | 9724 / 3135598 |
+| BPE tokens in raw HTML / indexed text | 276767729 / 6121269 |
+| Pending / deferred URLs | 837737 / 50 |
+
+^ Data category ^ Decoded file bytes ^ Stored file bytes ^ Allocated filesystem bytes ^
+| HTML | 886,852,136 | 190,003,691 | 211,697,664 |
+| Raw metadata and links | 644,472,077 | 133,760,278 | 208,945,152 |
+| Frontier and HTTP state | 272,091,619 | 272,091,619 | 273,817,600 |
+| Crawl catalog | 19,219,500 | 19,219,500 | 19,644,416 |
+| Parsed | 74,632,380 | 74,632,380 | 116,510,720 |
+| Index | 71,188,764 | 71,188,764 | 73,805,824 |
+
+HTML is 4.67× smaller in gzip. Its original size exceeds 500 MB; queue overhead is reported separately. Requests decodes HTTP content encodings before storage, so these are HTML-body sizes, not wire-traffic measurements. They include page markup and URL variants; deduplication counts are shown separately. Accepted pages are selected automatically by REGEX, not manually judged for relevance. Other pages remain in raw storage and are excluded from the species index. The full website is not claimed as downloaded.
+Token bonus: tiktoken 0.14.0, cl100k_base. Counts cover complete raw HTML including markup and, separately, deduplicated indexed texts. Each document is counted in memory without decompressed files. BPE counts differ from the index's word-token count.
+REGEX-test bonus: tests/test_extraction_gold.py checks 20 independently labeled real species pages and two real negative pages. Expected values were transcribed from source HTML. Fixtures preserve original bytes and SHA-256; cases include slug IDs, several environments and IUCN states, absent lengths, thousands separators, parenthesized sex labels and TL/SL/WD/NG measurements.
+The extractor depends on FishBase's HTML template. Section text can retain reference and navigation labels; the gold cases check the listed fields rather than corpus-wide accuracy.
+
+===== Reproduction and attachments =====
+
+<code bash>
+uv sync --locked
+uv run vinf parse run
+uv run vinf index build
+uv run vinf search query 'marine "Western Pacific" (tropical OR subtropical) -freshwater' --method tfidf --explain
+uv run vinf search compare
+uv run vinf report stats
+uv run vinf report build
+uv run python -m unittest discover -s tests -v
+</code>
+
+The source ZIP includes code, lockfile, schemas, configuration examples, tests and real fixtures. The evidence ZIP includes measurements, checks, comparison and a small reproducible demo. [[user:icit:start|Download links and demo instructions]]. The complete collected raw corpus and frontier remain preserved locally.
+
+===== Further coursework =====
+
+Next: Wikipedia REGEX extraction in Spark, a justified join with unique-page counts and match evidence, PyLucene fields and old/new index comparison, then relevance evaluation against Google/FishBase. Precision/recall will require an explicitly judged set. These later stages are not claimed as implemented.
+[[https://vi2026.ui.sav.sk/doku.php?id=projekty.pre.rok.2026|Requirements and deadlines]]

@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="830" viewBox="0 0 1280 830" role="img" aria-labelledby="title desc">
+<title id="title">Fish species search: crawler and independent stages</title>
+<desc id="desc">Configured seeds enter preferred and ordinary FIFO queues. Scope, robots and pacing gate HTTP requests. Successful HTML is saved unchanged with metadata and links. Regex discovery resolves and deduplicates new URLs back into the frontier. Failures retain tasks and cooldowns. Separate parse, index and search commands use separate directories and shared core contracts.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#45647d"/></marker></defs>
+<rect width="1280" height="830" rx="18" fill="#f3f7fb"/>
+<g font-family="Arial, sans-serif" fill="#18334a">
+<text x="38" y="44" font-size="27" font-weight="bold">Fish species search</text>
+<text x="38" y="73" font-size="16">Four independent commands · separate file artifacts · no database</text>
+<rect x="28" y="98" width="1224" height="365" rx="14" fill="#e5eff8"/>
+<text x="48" y="129" font-size="20" font-weight="bold">1. Crawl — generic URL traversal</text>
+<g fill="white" stroke="#9fb7c9" stroke-width="1.5">
+<rect x="48" y="155" width="170" height="112" rx="10"/>
+<rect x="256" y="155" width="220" height="112" rx="10"/>
+<rect x="514" y="155" width="220" height="112" rx="10"/>
+<rect x="772" y="155" width="170" height="112" rx="10"/>
+<rect x="980" y="155" width="250" height="112" rx="10"/>
+<rect x="514" y="307" width="428" height="92" rx="10"/>
+</g>
+<g font-size="17" font-weight="bold">
+<text x="65" y="183">Configured seeds</text><text x="273" y="183">Saved frontier</text>
+<text x="531" y="183">Request policy</text><text x="789" y="183">HTTP request</text>
+<text x="997" y="183">Committed raw packet</text><text x="533" y="334">REGEX link discovery</text>
+</g>
+<g font-size="15">
+<text x="65" y="211">Arbitrary URLs</text><text x="65" y="238">Host / depth limits</text>
+<text x="273" y="211">Preferred FIFO → FIFO</text><text x="273" y="238">UUID task buckets + cursor</text>
+<text x="531" y="211">Scope + robots rules</text><text x="531" y="238">Saved pacing / cooldowns</text>
+<text x="789" y="211">Timeouts / redirects</text><text x="789" y="238">Bounded response</text>
+<text x="997" y="211">Original HTML + metadata</text><text x="997" y="238">Links + checksums; gzip/xz</text>
+<text x="533" y="359">Resolve relative URLs → normalize → scope check</text>
+<text x="533" y="382">UUID membership check → append only new tasks</text>
+<text x="48" y="431">Failures remain retryable. Worker claims, attempts and clocks survive restarts. One writer commits recoverable batches.</text>
+</g>
+<g stroke="#45647d" stroke-width="2" fill="none" marker-end="url(#arrow)">
+<path d="M219 211H248"/><path d="M477 211H506"/><path d="M735 211H764"/><path d="M943 211H972"/>
+<path d="M1105 268V350H950"/><path d="M513 353H366V275"/>
+</g>
+<g fill="white" stroke="#9fb7c9" stroke-width="1.5">
+<rect x="38" y="500" width="260" height="168" rx="12"/>
+<rect x="352" y="500" width="260" height="168" rx="12"/>
+<rect x="666" y="500" width="260" height="168" rx="12"/>
+<rect x="980" y="500" width="260" height="168" rx="12"/>
+</g>
+<g stroke="#45647d" stroke-width="2" fill="none" marker-end="url(#arrow)">
+<path d="M299 584H344"/><path d="M613 584H658"/><path d="M927 584H972"/>
+</g>
+<g font-size="19" font-weight="bold">
+<text x="55" y="533">Crawled input</text><text x="369" y="533">2. Parse</text>
+<text x="683" y="533">3. Index</text><text x="997" y="533">4. Search</text>
+</g>
+<g font-size="15">
+<text x="55" y="563">crawled/</text><text x="55" y="591">Original bytes + provenance</text>
+<text x="55" y="619">Read-only input to parsing</text><text x="55" y="646">Catalog streams saved pages</text>
+<text x="369" y="563">parsed/</text><text x="369" y="591">Source-specific REGEX</text>
+<text x="369" y="619">Typed facts + section text</text><text x="369" y="646">JSON; optional gzip</text>
+<text x="683" y="563">indexed/</text><text x="683" y="591">Deduplicate + external sort</text>
+<text x="683" y="619">Binary positional postings</text><text x="683" y="646">Search text stored once</text>
+<text x="997" y="563">Index only</text><text x="997" y="591">Boolean + literal phrases</text>
+<text x="997" y="619">Two TF-IDF variants + BM25</text><text x="997" y="646">Scores + source evidence</text>
+</g>
+<rect x="38" y="702" width="1202" height="69" rx="10" fill="#d9e9f5"/>
+<text x="57" y="731" font-size="18" font-weight="bold">vinf-core — reused contracts and file utilities</text>
+<text x="57" y="756" font-size="15">Pydantic DTOs · compressed streams · atomic writes · locks · checksums · Unicode tokens · index readers</text>
+<text x="38" y="807" font-size="15">Python 3.12 + uv · Typer / Rich CLI · FishBase extraction adapter today; Wikipedia linking is a later stage</text>
+</g></svg>

@@ -1,0 +1,646 @@
+{
+  "note": "Unchanged extracted records from the completed Spark corpus; an explicitly labeled four-record subset, not a new Spark run.",
+  "fishbase_manifest_sha256": "7e88e5c227200232c275258092d80376cecb63e73ef54e75db47ebd425496d0f",
+  "join_manifest_sha256": "d827f05b6266cc8cbd902081977fa11f8c8c8eb30a6a0b108297e6e3202bd682",
+  "pairs": [
+    {
+      "fishbase": {
+        "record": {
+          "climate": "tropical",
+          "common_name": "Giant salmon carp",
+          "environments": [
+            "freshwater"
+          ],
+          "identifiers": [
+            {
+              "namespace": "fishbase",
+              "value": "16239"
+            }
+          ],
+          "iucn_code": "CR",
+          "max_length": {
+            "centimetres": 130.0,
+            "measurement": "SL",
+            "sex": "male/unsexed",
+            "unit": "cm",
+            "value": 130.0
+          },
+          "profile": "fishbase-summary-regex/5",
+          "schema_version": 3,
+          "scientific_name": "Aaptosyax grypus",
+          "sections": [
+            {
+              "name": "Classification / Names",
+              "raw_end": 19773,
+              "raw_start": 18661,
+              "rule": "h1-section",
+              "text": "Teleostei (teleosts) > Cypriniformes (Carps) > Cyprinidae (Minnows or carps) > Cyprininae Etymology: Aaptosyax: Greek, aaptos =giant, terrible + Greek, ykis, yaina, yanis, syaina, syax and syakon = a kind of sole; but it is also related to yaina =hyena and wild pig ; grypus: Named for its strongly curved jaws (Ref. 34719 ) ."
+            },
+            {
+              "name": "Environment: milieu / climate zone / depth range / distribution range",
+              "raw_end": 20476,
+              "raw_start": 20168,
+              "rule": "h1-section",
+              "text": "Freshwater; pelagic; potamodromous (Ref. 51243 ). Tropical (Ref. 71989 )"
+            },
+            {
+              "name": "Distribution",
+              "raw_end": 21764,
+              "raw_start": 21586,
+              "rule": "h1-section",
+              "text": "Asia: Mekong River."
+            },
+            {
+              "name": "Size / Weight / Age",
+              "raw_end": 22275,
+              "raw_start": 21837,
+              "rule": "h1-section",
+              "text": "Maturity: L m ? range ? - ? cm Max length : 130 cm SL male/unsexed; (Ref. 9497 ); max. published weight: 30.0 kg (Ref. 9497 )"
+            },
+            {
+              "name": "Short description",
+              "raw_end": 23555,
+              "raw_start": 22928,
+              "rule": "h1-section",
+              "text": "Well-developed adipose eye-lid, covering most of eye except pupil in large adults, less extensive in juveniles; presence of a large symphyseal knob in lower jaw fitting in a median notch in upper jaw (Ref. 43281 ). Body shape ( shape guide ): fusiform / normal."
+            },
+            {
+              "name": "Biology",
+              "raw_end": 25031,
+              "raw_start": 23925,
+              "rule": "h1-section",
+              "text": "Inhabits mainstreams of middle reaches in deep rocky rapids. Juveniles occur in tributaries (Ref. 58784 ). A large fast-swimming predator, feeding on fish of the middle and the upper water levels. Although most common along the Thai-Lao border at the mouth of the Mun River, its numbers have drastically decreased in recent years. This is perhaps due to dam construction or excessive gill netting, to which active pursuit predators, like this species, are particularly vulnerable (Ref. 12693 ). Undertakes upstream migration at the same time as Probarbus sp. in December-February (Ref. 37770 ) which may be related to spawning activity (Ref. 9497 ). Attains over 30 kg (Ref. 9497 )."
+            },
+            {
+              "name": "Main reference",
+              "raw_end": 27173,
+              "raw_start": 26736,
+              "rule": "h1-section",
+              "text": "Roberts, T.R. and T.J. Warren , 1994. Observations of fishes and fisheries in southern Laos and northeastern Cambodia, October 1993-Febuary 1994. Nat. Hist. Bull. Siam. Soc. 42:87-115. (Ref. 10431 )"
+            },
+            {
+              "name": "IUCN Red List Status (Ref. 130435 : Version 2025-2 (Global))",
+              "raw_end": 27799,
+              "raw_start": 27345,
+              "rule": "h1-section",
+              "text": "Critically Endangered (CR) (A2acd); Date assessed: 17 January 2011"
+            },
+            {
+              "name": "CITES",
+              "raw_end": 28057,
+              "raw_start": 27862,
+              "rule": "h1-section",
+              "text": "Not Evaluated"
+            },
+            {
+              "name": "CMS (Ref. 116361 )",
+              "raw_end": 28400,
+              "raw_start": 28183,
+              "rule": "h1-section",
+              "text": "Not Evaluated"
+            },
+            {
+              "name": "Threat to humans",
+              "raw_end": 28705,
+              "raw_start": 28472,
+              "rule": "h1-section",
+              "text": "Harmless"
+            },
+            {
+              "name": "Human uses",
+              "raw_end": 29432,
+              "raw_start": 28765,
+              "rule": "h1-section",
+              "text": "Fisheries: subsistence fisheries FAO - Publication: search | FishSource |"
+            },
+            {
+              "name": "More information",
+              "raw_end": 38435,
+              "raw_start": 29498,
+              "rule": "h1-section",
+              "text": "Trophic ecology Food items (preys) Diet composition Food consumption Food rations Predators Ecology Ecology Population dynamics Growth parameters Max. ages / sizes Length-weight rel. Length-length rel. Length-frequencies Mass conversion Recruitment Abundance Life cycle Reproduction Maturity Maturity/Gills rel. Fecundity Spawning Spawning aggregations Eggs Egg development Larvae Larval dynamics Distribution Territories FAO areas Ecosystems Occurrences Introductions BRUVS - Videos Anatomy Gill area Brain Otolith Physiology Body composition Nutrients Oxygen consumption Swimming type Swimming speed Visual pigments Fish sound Diseases & Parasites Toxicity (LC50s) Genetics Genome Genetics Heterozygosity Heritability Genetic Diversity Human related Aquaculture systems Aquaculture profiles Strains Ciguatera cases Stamps, coins, misc. Outreach Collaborators Taxonomy Common names Synonyms Morphology Morphometrics Pictures References References"
+            }
+          ],
+          "source_name": "fishbase",
+          "species_key": "aaptosyax grypus",
+          "taxonomy": {
+            "class_name": "Teleostei",
+            "family": "Cyprinidae",
+            "order": "Cypriniformes"
+          },
+          "warnings": []
+        },
+        "source": {
+          "doc_id": "06ec79b0-31f8-5c4b-b0b9-edd8856628a4",
+          "encoding": "UTF-8",
+          "fetched_at": "2026-10-25T20:39:46.283653Z",
+          "raw_path": "raw/06ec79b0-31f8-5c4b-b0b9-edd8856628a4/content.html.gz",
+          "requested_url": "https://www.fishbase.se/summary/SpeciesSummary.php?id=16239",
+          "sha256": "5fcbc4ac378ab5b7a1fc18897319f51f41f2edd77b5875bfc80b1a8260f5ae68",
+          "url": "https://www.fishbase.se/summary/16239"
+        },
+        "source_id": "16239"
+      },
+      "wikipedia": {
+        "authority": "Rainboth, 1991",
+        "categories": [
+          "Cyprininae",
+          "Fish described in 1991",
+          "Freshwater fish of Southeast Asia",
+          "Monotypic fish genera",
+          "Taxa named by Walter John Rainboth",
+          "Taxonomy articles created by Polbot"
+        ],
+        "description": "The giant salmon carp It is endemic to the middle reaches of the Mekong River in northern Cambodia, Laos, and Thailand. Its population is much reduced (>90%) as a result of overfishing and habitat degradation, and it is now considered Critically Endangered.",
+        "disambiguation": false,
+        "dump_file": "file:///Users/ichaban/project/fiit-vinf/data/wikipedia/selected/block-007326788230-007327123901.xml.bz2",
+        "family": null,
+        "genus": "Aaptosyax",
+        "order": null,
+        "page_id": 12183217,
+        "redirect": null,
+        "revision_id": 1375477394,
+        "scientific_name": "Aaptosyax grypus",
+        "species_key": "aaptosyax grypus",
+        "status": "CR",
+        "status_system": "IUCN3.1",
+        "timestamp": "2026-09-18T00:54:24Z",
+        "title": "Giant salmon carp",
+        "url": "https://en.wikipedia.org/wiki/Giant_salmon_carp",
+        "wikitext_sha256": "6ed6670ff3a98f5f408e187d3e83398f66498777af4c70995caa2b280c374ded"
+      }
+    },
+    {
+      "fishbase": {
+        "record": {
+          "climate": "subtropical",
+          "common_name": null,
+          "environments": [
+            "marine"
+          ],
+          "identifiers": [
+            {
+              "namespace": "fishbase",
+              "value": "62612"
+            }
+          ],
+          "iucn_code": "LC",
+          "max_length": {
+            "centimetres": 32.5,
+            "measurement": "SL",
+            "sex": "male/unsexed",
+            "unit": "cm",
+            "value": 32.5
+          },
+          "profile": "fishbase-summary-regex/5",
+          "schema_version": 3,
+          "scientific_name": "Abalistes filamentosus",
+          "sections": [
+            {
+              "name": "Classification / Names",
+              "raw_end": 21696,
+              "raw_start": 20616,
+              "rule": "h1-section",
+              "text": "Teleostei (teleosts) > Tetraodontiformes (Puffers and filefishes) > Balistidae (Triggerfishes) Etymology: Abalistes: Greek, a = without + Greek, ballo = to throw (Ref. 45335 ) ; filamentosus: Named for the filamentous rays in its caudal fin ."
+            },
+            {
+              "name": "Environment: milieu / climate zone / depth range / distribution range",
+              "raw_end": 22177,
+              "raw_start": 21920,
+              "rule": "h1-section",
+              "text": "Marine; pelagic-neritic; depth range 61 - 180 m (Ref. 54835 ). Subtropical"
+            },
+            {
+              "name": "Distribution",
+              "raw_end": 23770,
+              "raw_start": 23522,
+              "rule": "h1-section",
+              "text": "Indo-West Pacific: Ryukyu Islands to the Northwest Shelf of Australia, and the Timor Sea."
+            },
+            {
+              "name": "Size / Weight / Age",
+              "raw_end": 24306,
+              "raw_start": 23843,
+              "rule": "h1-section",
+              "text": "Maturity: L m ? range ? - ? cm Max length : 32.5 cm SL male/unsexed; (Ref. 54835 ); 24.3 cm SL (female); max. published weight: 1.4 kg (Ref. 85123 )"
+            },
+            {
+              "name": "Short description",
+              "raw_end": 26337,
+              "raw_start": 24804,
+              "rule": "h1-section",
+              "text": "Dorsal spines (total): 3; Dorsal soft rays (total): 25 - 27; Anal soft rays : 22 - 25. This species is distinguished by the following characters: D III,25-27; A 22-25; pectoral rays 14-15 (usually 14); body scale rows 33-39; head scale rows 25-32; upper and lower rays of the caudal fin are greatly produced in filaments; cheek with 3 or 4 longitudinal grooves. Colouration: proximal part of spinous dorsal fin is dark brown; body without yellow/pale blue spots or yellow reticulations; ground color of body is dark brown dorsally, mottled with irregular pale markings, then becoming white ventrally; cheek is brown with greenish tinge (Ref. 54835 ). Body shape ( shape guide ): short and / or deep; Cross section: compressed."
+            },
+            {
+              "name": "Life cycle and mating behavior",
+              "raw_end": 27794,
+              "raw_start": 27563,
+              "rule": "h1-section",
+              "text": "Oviparous, distinct pairing during breeding (Ref. 205 )."
+            },
+            {
+              "name": "Main reference",
+              "raw_end": 29203,
+              "raw_start": 28781,
+              "rule": "h1-section",
+              "text": "Matsuura, K. and T. Yoshino , 2004. A new triggerfish of the genus Abalistes (Tetraodontiformes: Balistidae) from the Western Pacific. Rec. Aust. Mus. 56:189-194. (Ref. 54835 )"
+            },
+            {
+              "name": "IUCN Red List Status (Ref. 130435 : Version 2025-2 (Global))",
+              "raw_end": 29818,
+              "raw_start": 29375,
+              "rule": "h1-section",
+              "text": "Least Concern (LC) ; Date assessed: 11 January 2022"
+            },
+            {
+              "name": "CITES",
+              "raw_end": 30076,
+              "raw_start": 29881,
+              "rule": "h1-section",
+              "text": "Not Evaluated"
+            },
+            {
+              "name": "CMS (Ref. 116361 )",
+              "raw_end": 30419,
+              "raw_start": 30202,
+              "rule": "h1-section",
+              "text": "Not Evaluated"
+            },
+            {
+              "name": "Threat to humans",
+              "raw_end": 30724,
+              "raw_start": 30491,
+              "rule": "h1-section",
+              "text": "Harmless"
+            },
+            {
+              "name": "Human uses",
+              "raw_end": 31439,
+              "raw_start": 30784,
+              "rule": "h1-section",
+              "text": "FAO - Publication: search | FishSource |"
+            },
+            {
+              "name": "More information",
+              "raw_end": 40471,
+              "raw_start": 31505,
+              "rule": "h1-section",
+              "text": "Trophic ecology Food items (preys) Diet composition Food consumption Food rations Predators Ecology Ecology Population dynamics Growth parameters Max. ages / sizes Length-weight rel. Length-length rel. Length-frequencies Mass conversion Recruitment Abundance Life cycle Reproduction Maturity Maturity/Gills rel. Fecundity Spawning Spawning aggregations Eggs Egg development Larvae Larval dynamics Distribution Territories FAO areas Ecosystems Occurrences Introductions BRUVS - Videos Anatomy Gill area Brain Otolith Physiology Body composition Nutrients Oxygen consumption Swimming type Swimming speed Visual pigments Fish sound Diseases & Parasites Toxicity (LC50s) Genetics Genome Genetics Heterozygosity Heritability Genetic Diversity Human related Aquaculture systems Aquaculture profiles Strains Ciguatera cases Stamps, coins, misc. Outreach Collaborators Taxonomy Common names Synonyms Morphology Morphometrics Pictures References References"
+            }
+          ],
+          "source_name": "fishbase",
+          "species_key": "abalistes filamentosus",
+          "taxonomy": {
+            "class_name": "Teleostei",
+            "family": "Balistidae",
+            "order": "Tetraodontiformes"
+          },
+          "warnings": []
+        },
+        "source": {
+          "doc_id": "4a95218e-fc57-505d-a7f6-ed2501b061af",
+          "encoding": "UTF-8",
+          "fetched_at": "2026-10-27T07:59:16.178245Z",
+          "raw_path": "raw/4a95218e-fc57-505d-a7f6-ed2501b061af/content.html.gz",
+          "requested_url": "https://www.fishbase.se/summary/SpeciesSummary.php?id=62612",
+          "sha256": "3a35cbb8149977b3ab9b2924d47bc9821eca6b47d1292d198421a21573e22f90",
+          "url": "https://www.fishbase.se/summary/62612"
+        },
+        "source_id": "62612"
+      },
+      "wikipedia": {
+        "authority": "Matsuura & Yoshino, 2004",
+        "categories": [
+          "Abalistes",
+          "Fish described in 2004",
+          "Taxa named by Keiichi Matsuura",
+          "Taxa named by Tetsuo Yoshino"
+        ],
+        "description": "Abalistes filamentosus, the hairfin triggerfish, is a species of marine ray-finned fish belonging to the family Balistidae, the triggerfishes. It is found in the Indo-Pacific Ocean and in subtropical waters. It lives in the Pelagic-Neritic zone of the ocean between 61–180 meters deep. It is harmless to humans.",
+        "disambiguation": false,
+        "dump_file": "file:///Users/ichaban/project/fiit-vinf/data/wikipedia/selected/block-016489353672-016489435068.xml.bz2",
+        "family": null,
+        "genus": "Abalistes",
+        "order": null,
+        "page_id": 45410721,
+        "redirect": null,
+        "revision_id": 1381964536,
+        "scientific_name": "Abalistes filamentosus",
+        "species_key": "abalistes filamentosus",
+        "status": "LC",
+        "status_system": "IUCN3.1",
+        "timestamp": "2026-10-25T20:59:49Z",
+        "title": "Abalistes filamentosus",
+        "url": "https://en.wikipedia.org/wiki/Abalistes_filamentosus",
+        "wikitext_sha256": "df35b29bd6c882565eb153048f3d2dc8915870bb376dc4af518ad382c4e8f1f2"
+      }
+    },
+    {
+      "fishbase": {
+        "record": {
+          "climate": "tropical",
+          "common_name": "Tailjet frogfish",
+          "environments": [
+            "marine"
+          ],
+          "identifiers": [
+            {
+              "namespace": "fishbase",
+              "value": "11144"
+            }
+          ],
+          "iucn_code": "LC",
+          "max_length": {
+            "centimetres": 7.8,
+            "measurement": "SL",
+            "sex": "male/unsexed",
+            "unit": "cm",
+            "value": 7.8
+          },
+          "profile": "fishbase-summary-regex/5",
+          "schema_version": 3,
+          "scientific_name": "Abantennarius analis",
+          "sections": [
+            {
+              "name": "Classification / Names",
+              "raw_end": 19540,
+              "raw_start": 18663,
+              "rule": "h1-section",
+              "text": "Teleostei (teleosts) > Lophiiformes (Anglerfishes) > Antennariidae (Frogfishes) More on author: Schultz ."
+            },
+            {
+              "name": "Environment: milieu / climate zone / depth range / distribution range",
+              "raw_end": 20039,
+              "raw_start": 19764,
+              "rule": "h1-section",
+              "text": "Marine; reef-associated; depth range 2 - 21 m (Ref. 58302 ). Tropical; 22°N - 15°S"
+            },
+            {
+              "name": "Distribution",
+              "raw_end": 21472,
+              "raw_start": 21193,
+              "rule": "h1-section",
+              "text": "Indo-Pacific: Christmas Island and Rowley Shoals to the Society Islands, including Palau, Fiji, Samoa, Oahu, and Hawaii."
+            },
+            {
+              "name": "Size / Weight / Age",
+              "raw_end": 21886,
+              "raw_start": 21545,
+              "rule": "h1-section",
+              "text": "Maturity: L m ? range ? - ? cm Max length : 7.8 cm SL male/unsexed; (Ref. 6773 )"
+            },
+            {
+              "name": "Short description",
+              "raw_end": 23564,
+              "raw_start": 22378,
+              "rule": "h1-section",
+              "text": "Dorsal spines (total): 3; Dorsal soft rays (total): 12; Anal spines : 0; Anal soft rays : 7. Gill openings located far back near the anal fin origin (Ref. 4538 ). Body shape ( shape guide ): short and / or deep; Cross section: compressed."
+            },
+            {
+              "name": "Biology",
+              "raw_end": 24354,
+              "raw_start": 23934,
+              "rule": "h1-section",
+              "text": "Has been collected from tide pools and to outer reef slopes (Ref. 1602 ). Benthic species (Ref. 58302 , 75154 )."
+            },
+            {
+              "name": "Life cycle and mating behavior",
+              "raw_end": 25387,
+              "raw_start": 25253,
+              "rule": "h1-section",
+              "text": "Oviparous."
+            },
+            {
+              "name": "Main reference",
+              "raw_end": 26734,
+              "raw_start": 26311,
+              "rule": "h1-section",
+              "text": "Pietsch, T.W. and D.B. Grobecker , 1987. Frogfishes of the world. Systematics, zoogeography, and behavioral ecology. Stanford University Press, Stanford, California. 420 p. (Ref. 6773 )"
+            },
+            {
+              "name": "IUCN Red List Status (Ref. 130435 : Version 2025-2 (Global))",
+              "raw_end": 27352,
+              "raw_start": 26906,
+              "rule": "h1-section",
+              "text": "Least Concern (LC) ; Date assessed: 06 September 2021"
+            },
+            {
+              "name": "CITES",
+              "raw_end": 27610,
+              "raw_start": 27415,
+              "rule": "h1-section",
+              "text": "Not Evaluated"
+            },
+            {
+              "name": "CMS (Ref. 116361 )",
+              "raw_end": 27953,
+              "raw_start": 27736,
+              "rule": "h1-section",
+              "text": "Not Evaluated"
+            },
+            {
+              "name": "Threat to humans",
+              "raw_end": 28266,
+              "raw_start": 28025,
+              "rule": "h1-section",
+              "text": "Poisonous to eat"
+            },
+            {
+              "name": "Human uses",
+              "raw_end": 29033,
+              "raw_start": 28326,
+              "rule": "h1-section",
+              "text": "Fisheries: of no interest FAO - Publication: search | FishSource |"
+            },
+            {
+              "name": "More information",
+              "raw_end": 38027,
+              "raw_start": 29099,
+              "rule": "h1-section",
+              "text": "Trophic ecology Food items (preys) Diet composition Food consumption Food rations Predators Ecology Ecology Population dynamics Growth parameters Max. ages / sizes Length-weight rel. Length-length rel. Length-frequencies Mass conversion Recruitment Abundance Life cycle Reproduction Maturity Maturity/Gills rel. Fecundity Spawning Spawning aggregations Eggs Egg development Larvae Larval dynamics Distribution Territories FAO areas Ecosystems Occurrences Introductions BRUVS - Videos Anatomy Gill area Brain Otolith Physiology Body composition Nutrients Oxygen consumption Swimming type Swimming speed Visual pigments Fish sound Diseases & Parasites Toxicity (LC50s) Genetics Genome Genetics Heterozygosity Heritability Genetic Diversity Human related Aquaculture systems Aquaculture profiles Strains Ciguatera cases Stamps, coins, misc. Outreach Collaborators Taxonomy Common names Synonyms Morphology Morphometrics Pictures References References"
+            }
+          ],
+          "source_name": "fishbase",
+          "species_key": "abantennarius analis",
+          "taxonomy": {
+            "class_name": "Teleostei",
+            "family": "Antennariidae",
+            "order": "Lophiiformes"
+          },
+          "warnings": []
+        },
+        "source": {
+          "doc_id": "8bbb98b6-fa0c-548b-b302-5f225f31b7d7",
+          "encoding": "UTF-8",
+          "fetched_at": "2026-10-25T21:42:30.509581Z",
+          "raw_path": "raw/8bbb98b6-fa0c-548b-b302-5f225f31b7d7/content.html.gz",
+          "requested_url": "https://www.fishbase.se/summary/SpeciesSummary.php?id=11144&lang=English",
+          "sha256": "3c1ae94d66f1805c00923c1200e74e9bb3b38b7c0845df4af639640199b6051d",
+          "url": "https://www.fishbase.se/summary/SpeciesSummary.php?id=11144&lang=English"
+        },
+        "source_id": "11144"
+      },
+      "wikipedia": {
+        "authority": "L. P. Schultz, 1957",
+        "categories": [
+          "Abantennarius",
+          "Fish described in 1967",
+          "Fish of the Indian Ocean",
+          "Fish of the Pacific Ocean",
+          "Taxa named by Leonard Peter Schultz"
+        ],
+        "description": "Abantennarius analis, the tailjet frogfish, tailjet anglerfish or dwarf frogfish, is a species of marine ray-finned fish belonging to the family Antennariidae, the frogfishes. This species is found in the eastern Indian Ocean and the western Pacific Ocean.",
+        "disambiguation": false,
+        "dump_file": "file:///Users/ichaban/project/fiit-vinf/data/wikipedia/selected/block-022845710991-022846110105.xml.bz2",
+        "family": null,
+        "genus": "Abantennarius",
+        "order": null,
+        "page_id": 69686602,
+        "redirect": null,
+        "revision_id": 1354751537,
+        "scientific_name": "Abantennarius analis",
+        "species_key": "abantennarius analis",
+        "status": "LC",
+        "status_system": "IUCN3.1",
+        "timestamp": "2026-05-18T02:16:55Z",
+        "title": "Abantennarius analis",
+        "url": "https://en.wikipedia.org/wiki/Abantennarius_analis",
+        "wikitext_sha256": "82c73edb3b18a99dceda817b6d02b04a043fc2c8d3c91fe0fa35d36a6ea6c3b1"
+      }
+    },
+    {
+      "fishbase": {
+        "source_id": "1000",
+        "source": {
+          "doc_id": "4c6f9fde-4dfc-5975-913e-9da0317dc4ff",
+          "encoding": "UTF-8",
+          "fetched_at": "2026-10-27T02:37:39.595857Z",
+          "raw_path": "raw/4c6f9fde-4dfc-5975-913e-9da0317dc4ff/content.html.gz",
+          "requested_url": "https://www.fishbase.se/summary/SpeciesSummary.php?id=1000",
+          "sha256": "97bb42042b6f1ac2ca7b0ec6a2bbaceec93de02fc16c368c621f93c174a54e9f",
+          "url": "https://www.fishbase.se/summary/1000"
+        },
+        "record": {
+          "climate": "tropical",
+          "common_name": "Castin leatherjacket",
+          "environments": [
+            "marine",
+            "brackish"
+          ],
+          "identifiers": [
+            {
+              "namespace": "fishbase",
+              "value": "1000"
+            }
+          ],
+          "iucn_code": "LC",
+          "max_length": {
+            "centimetres": 50.0,
+            "measurement": "TL",
+            "sex": "male/unsexed",
+            "unit": "cm",
+            "value": 50.0
+          },
+          "profile": "fishbase-summary-regex/5",
+          "schema_version": 3,
+          "scientific_name": "Oligoplites saliens",
+          "sections": [
+            {
+              "name": "Classification / Names",
+              "raw_end": 21989,
+              "raw_start": 20895,
+              "rule": "h1-section",
+              "text": "Teleostei (teleosts) > Carangiformes (Jacks) > Carangidae (Jacks and pompanos) > Scomberoidinae Etymology: Oligoplites: Greek, oligos = small + Greek, hoplites = armed (Ref. 45335 ) . More on author: Bloch ."
+            },
+            {
+              "name": "Environment: milieu / climate zone / depth range / distribution range",
+              "raw_end": 22696,
+              "raw_start": 22392,
+              "rule": "h1-section",
+              "text": "Marine; brackish; benthopelagic; depth range ? - 40 m (Ref. 9626 ). Tropical; 16°N - 35°S, 89°W - 34°W"
+            },
+            {
+              "name": "Distribution",
+              "raw_end": 24225,
+              "raw_start": 23995,
+              "rule": "h1-section",
+              "text": "Western Atlantic: Laguna de Caratasca, Honduras to Montevideo, Uruguay."
+            },
+            {
+              "name": "Size / Weight / Age",
+              "raw_end": 24953,
+              "raw_start": 24298,
+              "rule": "h1-section",
+              "text": "Maturity: L m ? range ? - ? cm Max length : 50.0 cm TL male/unsexed; (Ref. 5217 ); common length : 35.0 cm TL male/unsexed; (Ref. 5217 ); max. published weight: 900.00 g (Ref. 3277 )"
+            },
+            {
+              "name": "Biology",
+              "raw_end": 26175,
+              "raw_start": 25323,
+              "rule": "h1-section",
+              "text": "Adults are found over soft bottoms of the continental shelf, often inshore and in estuaries. Also pelagic and encountered throughout the water column (Ref. 9626 ). May feed on plankton by ram-filtering. Juveniles feed mainly on planktonic crustaceans and chaetognaths, to a minor extent on benthic crustaceans and polychaetes, besides scales taken from larger fishes (Ref. 30206 , 40402 ). Mature females generally spawn in summer. Eggs are pelagic (Ref. 35237 ). Marketed mostly fresh."
+            },
+            {
+              "name": "Main reference",
+              "raw_end": 28526,
+              "raw_start": 28154,
+              "rule": "h1-section",
+              "text": "Cervigón, F. , 1993. Los peces marinos de Venezuela. Volume 2. Fundación Científica Los Roques, Caracas,Venezuela. 497 p. (Ref. 9626 )"
+            },
+            {
+              "name": "IUCN Red List Status (Ref. 130435 : Version 2025-2 (Global))",
+              "raw_end": 29141,
+              "raw_start": 28698,
+              "rule": "h1-section",
+              "text": "Least Concern (LC) ; Date assessed: 20 August 2012"
+            },
+            {
+              "name": "CITES",
+              "raw_end": 29399,
+              "raw_start": 29204,
+              "rule": "h1-section",
+              "text": "Not Evaluated"
+            },
+            {
+              "name": "CMS (Ref. 116361 )",
+              "raw_end": 29742,
+              "raw_start": 29525,
+              "rule": "h1-section",
+              "text": "Not Evaluated"
+            },
+            {
+              "name": "Threat to humans",
+              "raw_end": 30047,
+              "raw_start": 29814,
+              "rule": "h1-section",
+              "text": "Harmless"
+            },
+            {
+              "name": "Human uses",
+              "raw_end": 30820,
+              "raw_start": 30107,
+              "rule": "h1-section",
+              "text": "Fisheries: minor commercial; aquarium: commercial FAO - Publication: search | FishSource |"
+            },
+            {
+              "name": "More information",
+              "raw_end": 40590,
+              "raw_start": 30886,
+              "rule": "h1-section",
+              "text": "Trophic ecology Food items (preys) Diet composition Food consumption Food rations Predators Ecology Ecology Population dynamics Growth parameters Max. ages / sizes Length-weight rel. Length-length rel. Length-frequencies Mass conversion Recruitment Abundance Life cycle Reproduction Maturity Maturity/Gills rel. Fecundity Spawning Spawning aggregations Eggs Egg development Larvae Larval dynamics Distribution Territories FAO areas Ecosystems Occurrences Introductions BRUVS - Videos Anatomy Gill area Brain Otolith Physiology Body composition Nutrients Oxygen consumption Swimming type Swimming speed Visual pigments Fish sound Diseases & Parasites Toxicity (LC50s) Genetics Genome Genetics Heterozygosity Heritability Genetic Diversity Human related Aquaculture systems Aquaculture profiles Strains Ciguatera cases Stamps, coins, misc. Outreach Collaborators Taxonomy Common names Synonyms Morphology Morphometrics Pictures References References"
+            }
+          ],
+          "source_name": "fishbase",
+          "species_key": "oligoplites saliens",
+          "taxonomy": {
+            "class_name": "Teleostei",
+            "family": "Carangidae",
+            "order": "Carangiformes"
+          },
+          "warnings": []
+        }
+      },
+      "wikipedia": null
+    }
+  ]
+}

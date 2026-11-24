@@ -1,0 +1,29 @@
+{
+  "queries": [
+    {
+      "question": "Which marine fish descriptions refer to the tropical or subtropical Western Pacific?",
+      "description": "Explore a region and climate together. The text must contain marine, the exact phrase Western Pacific, and tropical or subtropical. The standalone word freshwater excludes the document, including descriptions of species that also occur in fresh water.",
+      "query": "marine \"Western Pacific\" (tropical OR subtropical) -freshwater"
+    },
+    {
+      "question": "Which freshwater fish descriptions mention threatened species in the Mekong or Chao Phraya basins?",
+      "description": "Find regional conservation candidates. The text must contain freshwater, either Mekong or the exact phrase Chao Phraya, and Endangered or Vulnerable. Endangered also matches the word in Critically Endangered. A mention of either river is sufficient; the query does not require both.",
+      "query": "freshwater (Mekong OR \"Chao Phraya\") (Endangered OR Vulnerable)"
+    },
+    {
+      "question": "Which marine descriptions combine reef habitats with crustacean or mollusk feeding terms?",
+      "description": "Explore habitat and diet vocabulary together. The text must contain marine, either exact phrase coral reefs or rocky reefs, and at least one of crustaceans, mollusks or molluscs. Both spellings of mollusks are explicit alternatives. Read the returned description to check the feeding relationship.",
+      "query": "marine (\"coral reefs\" OR \"rocky reefs\") (crustaceans OR mollusks OR molluscs)"
+    },
+    {
+      "question": "Which freshwater fish descriptions connect cave habitats with blindness?",
+      "description": "Find candidates for studying cave-related loss of vision. The text must contain freshwater, at least one of cave, caves or subterranean, and blind or eyeless. Singular and plural forms are written explicitly because the search does not perform stemming.",
+      "query": "freshwater (cave OR caves OR subterranean) (blind OR eyeless)"
+    },
+    {
+      "question": "Which freshwater fish descriptions mention migration in Europe or the Danube without marine references?",
+      "description": "Explore freshwater migration with European distribution terms. The text must contain freshwater, migratory or potamodromous, and Europe or Danube. The standalone word marine excludes the document. Danube is an alternative to Europe, so a description need not contain the broader region's name.",
+      "query": "freshwater (migratory OR potamodromous) (Europe OR Danube) -marine"
+    }
+  ]
+}

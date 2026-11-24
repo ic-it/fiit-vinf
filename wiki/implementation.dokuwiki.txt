@@ -1,0 +1,1226 @@
+====== Implementation and extraction evidence ======
+
+[[user:icit:odovzdanie1|First submission]]
+
+===== URL discovery =====
+
+Current source: packages/vinf-crawler/src/vinf_crawler/discovery.py.
+<code python>
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+from html import unescape
+from urllib.parse import urljoin, urlsplit, urlunsplit
+from uuid import NAMESPACE_URL, UUID, uuid5
+
+from vinf_core.models import DiscoveredLink, DocumentLinks, LinkDecision
+
+from vinf_crawler.config import CrawlConfig
+
+
+def normalize_url(url: str) -> str | None:
+    """Normalize syntax only. Query order, language and path case remain meaningful."""
+    try:
+        parts = urlsplit(url.strip())
+        scheme = parts.scheme.lower()
+        if (
+            scheme not in {"http", "https"}
+            or not parts.hostname
+            or parts.username
+            or parts.password
+        ):
+            return None
+        host = parts.hostname.encode("idna").decode("ascii").lower()
+        if ":" in host:
+            host = f"[{host}]"
+        port = parts.port
+        if port and (scheme, port) not in {("http", 80), ("https", 443)}:
+            host += f":{port}"
+        return urlunsplit((scheme, host, parts.path or "/", parts.query, ""))
+    except (ValueError, UnicodeError):
+        return None
+
+
+def document_id(url: str) -> UUID:
+    return uuid5(NAMESPACE_URL, url)
+
+
+def origin(url: str) -> str:
+    parts = urlsplit(url)
+    return f"{parts.scheme}://{parts.netloc}"
+
+
+class Scope:
+    def __init__(self, config: CrawlConfig):
+        self.config = config.scope
+        self.hosts = self.config.allowed_hosts or tuple(
+            sorted({urlsplit(url).hostname for url in config.seeds})
+        )
+
+    def host_reason(self, url: str) -> str | None:
+        parts = urlsplit(url)
+        if parts.scheme not in self.config.allowed_schemes:
+            return "scheme-not-allowed"
+        host = parts.hostname or ""
+        if not any(
+            host == allowed
+            or (self.config.include_subdomains and host.endswith("." + allowed))
+            for allowed in self.hosts
+        ):
+            return "host-not-allowed"
+        return None
+
+    def reason(self, url: str) -> str | None:
+        if reason := self.host_reason(url):
+            return reason
+        if any(re.search(pattern, url) for pattern in self.config.deny_url_patterns):
+            return "url-denied"
+        if self.config.allow_url_patterns and not any(
+            re.search(pattern, url) for pattern in self.config.allow_url_patterns
+        ):
+            return "url-not-included"
+        return None
+
+
+@dataclass
+class Anchor:
+    href: str
+    text: str = ""
+
+
+# Match complete tags so quoted '>' and link-looking text in other attributes
+# cannot create links. This extracts HTML links, not JavaScript or form actions.
+IGNORED = re.compile(
+    r"<!--[\s\S]*?(?:-->|\Z)|<(script|style)\b[^>]*>[\s\S]*?</\1\s*>",
+    re.IGNORECASE,
+)
+TAG = re.compile(
+    r"<(?P<end>/)?(?P<tag>[a-z][\w:-]*)\b"
+    r"(?P<attrs>(?:[^>=]|=\s*(?:\"[^\"]*\"|'[^']*'|[^\s'\">]*))*)>",
+    re.IGNORECASE,
+)
+ATTRIBUTE = re.compile(
+    r"(?P<name>[^\s=/'\"<>`]+)"
+    r"(?:\s*=\s*(?:\"(?P<double>[^\"]*)\"|'(?P<single>[^']*)'"
+    r"|(?P<bare>[^\s'\"<>`]+)))?"
+)
+
+
+def extract_anchors(body: str) -> tuple[str | None, list[Anchor]]:
+    body = IGNORED.sub("", body)
+    base_href = None
+    anchors: list[Anchor] = []
+    active: Anchor | None = None
+    position = 0
+    for match in TAG.finditer(body):
+        if active is not None:
+            active.text += unescape(body[position : match.start()])
+        position = match.end()
+        tag = match["tag"].lower()
+        if match["end"]:
+            if tag == "a":
+                active = None
+            continue
+        if tag not in {"a", "area", "base", "link"}:
+            continue
+        attributes: dict[str, str | None] = {}
+        for attribute in ATTRIBUTE.finditer(match["attrs"]):
+            value = next((v for v in attribute.groups()[1:] if v is not None), None)
+            attributes[attribute["name"].lower()] = (
+                unescape(value) if value is not None else None
+            )
+        href = attributes.get("href")
+        if href is None:
+            continue
+        if tag == "base" and base_href is None:
+            base_href = href
+        elif tag in {"a", "area"}:
+            anchor = Anchor(href, attributes.get("alt") or "")
+            anchors.append(anchor)
+            active = anchor if tag == "a" else None
+        elif tag == "link" and set((attributes.get("rel") or "").lower().split()) & {
+            "next",
+            "prev",
+            "alternate",
+        }:
+            anchors.append(Anchor(href))
+    if active is not None:
+        active.text += unescape(body[position:])
+    return base_href, anchors
+
+
+def classify_links(
+    links: tuple[DiscoveredLink, ...],
+    depth: int,
+    config: CrawlConfig,
+) -> tuple[DiscoveredLink, ...]:
+    scope = Scope(config)
+    allowed_count = 0
+    result = []
+    for link in links:
+        reason = scope.reason(link.url) if link.url else "unsupported-or-invalid-url"
+        decision = LinkDecision.EXCLUDED if reason else LinkDecision.ALLOWED
+        if reason is None:
+            if (
+                config.traversal.max_depth is not None
+                and depth >= config.traversal.max_depth
+            ):
+                decision, reason = LinkDecision.DEFERRED, "depth-limit"
+            elif (
+                config.traversal.max_links_per_page is not None
+                and allowed_count >= config.traversal.max_links_per_page
+            ):
+                decision, reason = LinkDecision.DEFERRED, "width-limit"
+            else:
+                allowed_count += 1
+        result.append(link.model_copy(update={"decision": decision, "reason": reason}))
+    return tuple(result)
+
+
+def discover_links(
+    body: str, base_url: str, doc_id: UUID, depth: int, config: CrawlConfig
+) -> DocumentLinks:
+    base_href, anchors = extract_anchors(body)
+    try:
+        base = urljoin(base_url, base_href) if base_href is not None else base_url
+    except ValueError:
+        base = base_url
+    unique: dict[str, DiscoveredLink] = {}
+    for anchor in anchors:
+        try:
+            url = normalize_url(urljoin(base, anchor.href))
+        except ValueError:
+            url = None
+        key = url or anchor.href
+        if key not in unique:
+            unique[key] = DiscoveredLink(
+                href=anchor.href,
+                text=" ".join(anchor.text.split()),
+                url=url,
+                doc_id=document_id(url) if url else None,
+                decision=LinkDecision.ALLOWED,
+            )
+    links = tuple(unique[key] for key in sorted(unique))
+    return DocumentLinks(doc_id=doc_id, links=classify_links(links, depth, config))
+</code>
+
+===== Entity extraction =====
+
+Current source: packages/vinf-parsing/src/vinf_parsing/profiles/fishbase.py.
+<code python>
+"""FishBase summary profile. All entity extraction uses Python regular expressions.
+
+This profile is downstream of the generic crawler; it never makes HTTP requests.
+Offsets refer to Unicode character positions in the decoded original HTML.
+"""
+
+from __future__ import annotations
+
+import html
+import re
+from urllib.parse import parse_qs, urlsplit
+
+from vinf_core.records import (
+    Environment,
+    ExternalIdentifier,
+    Length,
+    Section,
+    SourceDocument,
+    SpeciesRecord,
+    Taxonomy,
+    species_key,
+)
+
+from vinf_parsing.profile import SelectionDecision
+
+PROFILE = "fishbase-summary-regex/5"
+FLAGS = re.IGNORECASE | re.DOTALL
+SCINAME = re.compile(
+    r"<span\b[^>]*class\s*=\s*['\"][^'\"]*\bsciname\b[^'\"]*['\"][^>]*>(.*?)</span\s*>",
+    FLAGS,
+)
+NAME_BLOCK = re.compile(
+    r"<div\b[^>]*id\s*=\s*['\"]ss-sciname['\"][^>]*>(.*?)</div\s*>", FLAGS
+)
+HEADINGS = re.compile(r"<h1\b[^>]*>(.*?)</h1\s*>", FLAGS)
+
+
+def plain_text(value: str) -> str:
+    value = re.sub(r"<!--.*?-->", " ", value, flags=re.DOTALL)
+    value = re.sub(r"<(script|style)\b[^>]*>.*?</\1\s*>", " ", value, flags=FLAGS)
+    value = re.sub(
+        r"<(?:br\b[^>]*|/p\s*|/div\s*|/li\s*)>", "\n", value, flags=re.IGNORECASE
+    )
+    value = re.sub(r"<[^>]*>", " ", value)
+    return " ".join(html.unescape(value).split())
+
+
+def scientific_name(body: str) -> str | None:
+    block = NAME_BLOCK.search(body)
+    if not block:
+        return None
+    words = [plain_text(match[1]) for match in SCINAME.finditer(block[1])]
+    name = " ".join(words)
+    return (
+        name
+        if re.fullmatch(
+            r"[A-Z][a-zA-Z-]+\s+[a-z][a-zA-Z-]+(?:\s+[a-z][a-zA-Z-]+)?", name
+        )
+        else None
+    )
+
+
+def sections(body: str) -> tuple[Section, ...]:
+    start = re.search(r"<div\b[^>]*id\s*=\s*['\"]ss-main['\"]", body, FLAGS)
+    if not start:
+        return ()
+    headings = list(HEADINGS.finditer(body, start.end()))
+    result = []
+    for index, match in enumerate(headings):
+        # Navigation labels and reference numbers inside the heading are not content.
+        heading = re.split(r"<span\b|<br\b", match[1], maxsplit=1, flags=re.IGNORECASE)[
+            0
+        ]
+        name = plain_text(heading)
+        if not name:
+            continue
+        end = headings[index + 1].start() if index + 1 < len(headings) else len(body)
+        if name.lower().startswith(
+            ("tools", "special reports", "download xml", "internet sources")
+        ):
+            break
+        text = plain_text(body[match.end() : end])
+        if text:
+            result.append(
+                Section(name=name, text=text, raw_start=match.end(), raw_end=end)
+            )
+    return tuple(result)
+
+
+def section_text(values: tuple[Section, ...], prefix: str) -> str | None:
+    return next(
+        (
+            item.text
+            for item in values
+            if item.name.casefold().startswith(prefix.casefold())
+        ),
+        None,
+    )
+
+
+def select_reason(body: str) -> tuple[bool, str, str | None]:
+    name = scientific_name(body)
+    if name is None:
+        return False, "no-summary-scientific-name", None
+    found = sections(body)
+    recognizable = sum(
+        any(
+            item.name.casefold().startswith(prefix)
+            for prefix in (
+                "classification",
+                "environment",
+                "distribution",
+                "size",
+                "biology",
+            )
+        )
+        for item in found
+    )
+    if recognizable < 2:
+        return False, "missing-summary-sections", name
+    return True, "fishbase-summary-content", name
+
+
+def summary_id(url: str) -> str | None:
+    parts = urlsplit(html.unescape(url))
+    numeric = re.fullmatch(r"/summary/(\d+)/?", parts.path, re.IGNORECASE)
+    if numeric:
+        return str(int(numeric[1]))
+    if parts.path.casefold().endswith("/speciessummary.php"):
+        for key, values in parse_qs(parts.query).items():
+            if key.casefold() == "id" and values[0].isdigit():
+                return str(int(values[0]))
+    return None
+
+
+def fishbase_id(body: str, source: SourceDocument) -> str | None:
+    """Prefer the resolved URL; slug pages expose their ID in language links."""
+    for url in (source.url, source.requested_url):
+        if identifier := summary_id(url):
+            return identifier
+    main = re.search(r"<div\b[^>]*id\s*=\s*['\"]ss-main['\"]", body, FLAGS)
+    navigation = body[: main.start()] if main else body
+    identifiers = {
+        identifier
+        for link in re.finditer(r"\bhref\s*=\s*(['\"])(.*?)\1", navigation, FLAGS)
+        if (identifier := summary_id(link[2])) is not None
+    }
+    # Related species may have their own links; ambiguity never invents identity.
+    return next(iter(identifiers)) if len(identifiers) == 1 else None
+
+
+def reported_number(value: str) -> float:
+    """English summaries use thousands commas; accept decimal commas as well."""
+    if "." in value or re.fullmatch(r"\d{1,3}(?:,\d{3})+", value):
+        return float(value.replace(",", ""))
+    return float(value.replace(",", "."))
+
+
+def extract_fish(body: str, source: SourceDocument) -> SpeciesRecord:
+    accepted, reason, name = select_reason(body)
+    if not accepted or name is None:
+        raise ValueError(f"Cannot extract species summary: {reason}")
+    found = sections(body)
+    block = NAME_BLOCK.search(body)
+    common_match = (
+        re.search(
+            r"<span\b[^>]*class\s*=\s*['\"]sheader2['\"][^>]*>(.*?)</span>",
+            block[1],
+            FLAGS,
+        )
+        if block
+        else None
+    )
+    common_name = plain_text(common_match[1]) if common_match else None
+    classification = section_text(found, "Classification")
+    lineage = (
+        (classification or "").split("Etymology:", 1)[0].split("Eponymy:", 1)[0].strip()
+    )
+    levels = [part.strip() for part in lineage.split(">")]
+
+    def taxon(index: int) -> str | None:
+        if len(levels) <= index:
+            return None
+        match = re.match(r"([A-Za-z][A-Za-z/-]*)", levels[index])
+        return match[1] if match else None
+
+    habitat = section_text(found, "Environment")
+    environments = tuple(
+        item
+        for item in Environment
+        if re.search(rf"\b{item.value}\b", habitat or "", re.IGNORECASE)
+    )
+    climate_match = re.search(
+        r"\b(tropical|subtropical|temperate|boreal|polar|deep-water)\b",
+        habitat or "",
+        re.IGNORECASE,
+    )
+    size = (
+        section_text(found, "Size")
+        or section_text(found, "Length at first maturity")
+        or ""
+    )
+    length_block = re.search(
+        r"Max\s+length\s*:\s*(.*?)(?=common\s+length|Max\s+(?:published|reported)|$)",
+        size,
+        re.IGNORECASE,
+    )
+    reported_lengths = []
+    for length_match in re.finditer(
+        r"(?<![\d.,])(\d+(?:[.,]\d+)*)\s*(mm|cm|m)\b"
+        r"(?:\s+(TL|SL|FL|WD|DW|NG))?(?:\s+\(?(male/unsexed|female)\)?)?",
+        length_block[1] if length_block else "",
+        re.IGNORECASE,
+    ):
+        value = reported_number(length_match[1])
+        if value > 0:
+            unit = length_match[2].lower()
+            reported_lengths.append(
+                Length(
+                    value=value,
+                    unit=unit,
+                    measurement=length_match[3].upper() if length_match[3] else None,
+                    sex=length_match[4],
+                    centimetres=value * {"mm": 0.1, "cm": 1, "m": 100}[unit],
+                )
+            )
+    maximum = max(reported_lengths, key=lambda value: value.centimetres, default=None)
+    iucn_text = section_text(found, "IUCN")
+    status_match = re.search(
+        r"\b(Extinct in the Wild|Extinct|Critically Endangered|Endangered|Vulnerable|Near Threatened|Least Concern|Data Deficient|Not Evaluated)\b(?:\s*\((EW|EX|CR|EN|VU|NT|LC|DD|NE)\))?",
+        iucn_text or "",
+        re.IGNORECASE,
+    )
+    codes = {
+        "extinct in the wild": "EW",
+        "extinct": "EX",
+        "critically endangered": "CR",
+        "endangered": "EN",
+        "vulnerable": "VU",
+        "near threatened": "NT",
+        "least concern": "LC",
+        "data deficient": "DD",
+        "not evaluated": "NE",
+    }
+    status = codes[status_match[1].lower()] if status_match else None
+    raw_id = fishbase_id(body, source)
+    warnings = []
+    if raw_id is None:
+        warnings.append("fishbase-id-unavailable")
+    if not maximum:
+        warnings.append("maximum-length-unavailable")
+    if not status:
+        warnings.append("iucn-status-unavailable")
+    distribution = section_text(found, "Distribution")
+    if not habitat:
+        warnings.append("habitat-unavailable")
+    if not distribution:
+        warnings.append("distribution-unavailable")
+    return SpeciesRecord(
+        profile=PROFILE,
+        source_name="fishbase",
+        identifiers=(ExternalIdentifier(namespace="fishbase", value=raw_id),)
+        if raw_id is not None
+        else (),
+        species_key=species_key(name),
+        scientific_name=name,
+        common_name=common_name or None,
+        taxonomy=Taxonomy(class_name=taxon(0), order=taxon(1), family=taxon(2)),
+        environments=environments,
+        climate=climate_match[1].lower() if climate_match else None,
+        max_length=maximum,
+        iucn_code=status,
+        sections=found,
+        warnings=tuple(warnings),
+    )
+
+
+def select_page(body: str) -> SelectionDecision:
+    selected, reason, _ = select_reason(body)
+    return SelectionDecision(selected=selected, reason=reason)
+
+
+class FishBaseProfile:
+    name = "fishbase"
+    version = PROFILE
+    select = staticmethod(select_page)
+    extract = staticmethod(extract_fish)
+</code>
+
+===== Five extracted records =====
+
+==== Gadus macrocephalus ====
+Source: [[https://fishbase.se/summary/Gadus_macrocephalus.html|saved page]], UUID 1980ce75-1b5d-5747-8b81-7bf6c5fee6af.
+<code json>
+{
+  "schema_version": 1,
+  "source": {
+    "doc_id": "1980ce75-1b5d-5747-8b81-7bf6c5fee6af",
+    "requested_url": "https://fishbase.se/summary/SpeciesSummary.php?genusname=Gadus&speciesname=macrocephalus",
+    "url": "https://fishbase.se/summary/Gadus_macrocephalus.html",
+    "raw_path": "raw/1980ce75-1b5d-5747-8b81-7bf6c5fee6af/content.html.gz",
+    "encoding": "UTF-8",
+    "sha256": "96839a20b843adc0e742e82bcb647f81f2b06b950732aac8a385131c272015a2",
+    "fetched_at": "2026-10-25T18:49:06.241778Z"
+  },
+  "fingerprint": "bab997a859de1d6a7d599cd6f1bdfe4c36b7035b7a9fb283d5bb727dbcc57428",
+  "status": "accepted",
+  "reason": "fishbase-summary-content",
+  "record": {
+    "schema_version": 3,
+    "profile": "fishbase-summary-regex/5",
+    "source_name": "fishbase",
+    "identifiers": [
+      {
+        "namespace": "fishbase",
+        "value": "308"
+      }
+    ],
+    "scientific_name": "Gadus macrocephalus",
+    "species_key": "gadus macrocephalus",
+    "common_name": "Pacific cod",
+    "taxonomy": {
+      "class_name": "Teleostei",
+      "order": "Gadiformes",
+      "family": "Gadidae"
+    },
+    "environments": [
+      "marine",
+      "brackish"
+    ],
+    "climate": "boreal",
+    "max_length": {
+      "value": 119.0,
+      "unit": "cm",
+      "measurement": "TL",
+      "sex": "male/unsexed",
+      "centimetres": 119.0
+    },
+    "iucn_code": "NE",
+    "sections": [
+      {
+        "name": "Classification / Names",
+        "text": "Teleostei (teleosts) > Gadiformes (Cods) > Gadidae (Cods and haddocks) Etymology: Gadus: Latin, gadus = a fish, cod? (Ref. 45335 ) ; macrocephalus: macrocephalus meaning large head (Ref. 6885 ) .",
+        "raw_start": 20669,
+        "raw_end": 21720,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Environment: milieu / climate zone / depth range / distribution range",
+        "text": "Marine; brackish; demersal; oceanodromous (Ref. 138310 ); depth range 10 - 1280 m (Ref. 50550 ), usually 100 - 400 m (Ref. 54440 ). Boreal; 6°C - 9°C (Ref. 11800 ); 73°N - 31°N, 119°E - 119°W",
+        "raw_start": 22122,
+        "raw_end": 22684,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Distribution",
+        "text": "Arctic: Chukchi and Beaufort Seas eastward across Arctic Canada to western Greenland; south in the Atlantic Ocean to Gulf of St. Lawrence. Pacific Ocean: eastern Pacific to southern California at Santa Monica, and in the western Pacific to the Yellow Sea.",
+        "raw_start": 23979,
+        "raw_end": 24394,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Length at first maturity / Size / Weight / Age",
+        "text": "Maturity: L m 66.6 , range 23 - 85 cm Max length : 119 cm TL male/unsexed; (Ref. 40637 ); max. published weight: 22.7 kg (Ref. 27436 ); max. reported age: 25 years (Ref. 55701 )",
+        "raw_start": 24494,
+        "raw_end": 25028,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Short description",
+        "text": "Dorsal spines (total): 0; Dorsal soft rays (total): 37 - 57; Anal spines : 0; Anal soft rays : 31 - 42; Vertebrae : 49 - 55. Distinguished by the presence of 3 dorsal and 2 anal fins, a long chin barbel (about 3/4 as long as the eye diameter in young, longer than eye diameter in adults), and a space between the second and third dorsal fins that is shorter than the eye diameter (Ref. 27547 ). Lateral line with a prominent arch under the 1st and 2nd dorsal fins, is straight toward the tail, ending under the 3rd dorsal (Ref. 27547 ). Brown or gray dorsally, becoming paler ventrally; dark spots or vermiculating patterns on the sides (Ref.1371). Yellow color phases are known (Ref. 27547 ). Fins dusky; dorsal, anal and caudal fins with white edges that are wider on anal and caudal than on dorsal (Ref. 27547 ). Body shape ( shape guide ): fusiform / normal; Cross section: oval.",
+        "raw_start": 25879,
+        "raw_end": 27943,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Biology",
+        "text": "Found mainly along the continental shelf and upper slopes (Ref. 1371 ). Form schools (Ref. 9988 ). They appear to be indiscriminate predators upon dominant food organisms present (Ref. 1371 ). Young probably feed on copepods and similar organisms (Ref. 27547 ). Adults feed on fishes, octopi, and large benthic and benthopelagic crustaceans (Ref. 1371 ); also worms. Parasites of the species include sealworm ( Phocanema decipiens ) in flesh, copepod ( Lernaeocera branchialis ) on gills and cestode ( Pyramicocephalus phocarum ) in the intestine (Ref. 5951 ). Marketed fresh and frozen for human consumption (Ref. 2850 ), and also dried or salted and smoked (Ref. 9988 ). Eaten steamed, fried, broiled, boiled, micro-waved and baked (Ref. 9988 ). Used in Chinese medicine (Ref. 12166 ). Minimum depth from Ref. 054440 .",
+        "raw_start": 28313,
+        "raw_end": 29881,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Life cycle and mating behavior",
+        "text": "From late summer to mid-winter, fish move into the deeper water (100 to 250 m) of spawning areas; move inshore to depths of 30 to 60 m after spawning (Ref. 27547 ). Spawning occurs once a year (Ref. 120291 ).",
+        "raw_start": 31512,
+        "raw_end": 31951,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Main reference",
+        "text": "Cohen, D.M., T. Inada, T. Iwamoto and N. Scialabba , 1990. FAO species catalogue. Vol. 10. Gadiform fishes of the world (Order Gadiformes). An annotated and illustrated catalogue of cods, hakes, grenadiers and other gadiform fishes known to date. FAO Fish. Synop. 125(10). Rome: FAO. 442 p. (Ref. 1371 )",
+        "raw_start": 32861,
+        "raw_end": 33402,
+        "rule": "h1-section"
+      },
+      {
+        "name": "IUCN Red List Status (Ref. 130435 : Version 2025-2 (Global))",
+        "text": "Not Evaluated",
+        "raw_start": 33574,
+        "raw_end": 33837,
+        "rule": "h1-section"
+      },
+      {
+        "name": "CITES",
+        "text": "Not Evaluated",
+        "raw_start": 33900,
+        "raw_end": 34095,
+        "rule": "h1-section"
+      },
+      {
+        "name": "CMS (Ref. 116361 )",
+        "text": "Not Evaluated",
+        "raw_start": 34221,
+        "raw_end": 34438,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Threat to humans",
+        "text": "Harmless",
+        "raw_start": 34510,
+        "raw_end": 34743,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Human uses",
+        "text": "Fisheries: highly commercial; gamefish: yes FAO - Fisheries: species profile , landings search ; Publication: search | FishSource | Sea Around Us",
+        "raw_start": 34803,
+        "raw_end": 35927,
+        "rule": "h1-section"
+      },
+      {
+        "name": "More information",
+        "text": "Trophic ecology Food items (preys) Diet composition Food consumption Food rations Predators Ecology Ecology Population dynamics Growth parameters Max. ages / sizes Length-weight rel. Length-length rel. Length-frequencies Mass conversion Recruitment Abundance Life cycle Reproduction Maturity Maturity/Gills rel. Fecundity Spawning Spawning aggregations Eggs Egg development Larvae Larval dynamics Distribution Territories FAO areas Ecosystems Occurrences Introductions BRUVS - Videos Anatomy Gill area Brain Otolith Physiology Body composition Nutrients Oxygen consumption Swimming type Swimming speed Visual pigments Fish sound Diseases & Parasites Toxicity (LC50s) Genetics Genome Genetics Heterozygosity Heritability Genetic Diversity Human related Aquaculture systems Aquaculture profiles Strains Ciguatera cases Stamps, coins, misc. Outreach Collaborators Taxonomy Common names Synonyms Morphology Morphometrics Pictures References References",
+        "raw_start": 35993,
+        "raw_end": 49971,
+        "rule": "h1-section"
+      }
+    ],
+    "warnings": []
+  },
+  "error": null
+}
+</code>
+
+==== Rhincodon typus ====
+Source: [[https://www.fishbase.se/summary/SpeciesSummary.php?id=2081&lang=English|saved page]], UUID ae7cb95d-2730-5d31-8f2f-de2fb13eab7c.
+<code json>
+{
+  "schema_version": 1,
+  "source": {
+    "doc_id": "ae7cb95d-2730-5d31-8f2f-de2fb13eab7c",
+    "requested_url": "https://www.fishbase.se/summary/SpeciesSummary.php?id=2081&lang=English",
+    "url": "https://www.fishbase.se/summary/SpeciesSummary.php?id=2081&lang=English",
+    "raw_path": "raw/ae7cb95d-2730-5d31-8f2f-de2fb13eab7c/content.html.gz",
+    "encoding": "UTF-8",
+    "sha256": "867e78f4f90d5564e2ddbe01b6b888aed10e38665ad1a1ff0efb75353b632c3b",
+    "fetched_at": "2026-10-25T01:46:16.750060Z"
+  },
+  "fingerprint": "c54120eeb3f2be35eae1460ac0064d155cc822870e311c05b2a8125939c3d4d0",
+  "status": "accepted",
+  "reason": "fishbase-summary-content",
+  "record": {
+    "schema_version": 3,
+    "profile": "fishbase-summary-regex/5",
+    "source_name": "fishbase",
+    "identifiers": [
+      {
+        "namespace": "fishbase",
+        "value": "2081"
+      }
+    ],
+    "scientific_name": "Rhincodon typus",
+    "species_key": "rhincodon typus",
+    "common_name": "Whale shark",
+    "taxonomy": {
+      "class_name": "Elasmobranchii",
+      "order": "Orectolobiformes",
+      "family": "Rhincodontidae"
+    },
+    "environments": [
+      "marine"
+    ],
+    "climate": "subtropical",
+    "max_length": {
+      "value": 2000.0,
+      "unit": "cm",
+      "measurement": "TL",
+      "sex": "female",
+      "centimetres": 2000.0
+    },
+    "iucn_code": "EN",
+    "sections": [
+      {
+        "name": "Classification / Names",
+        "text": "Elasmobranchii (sharks and rays) > Orectolobiformes (Carpet sharks) > Rhincodontidae (Whale shark) Etymology: Rhincodon: rhinc , presumably a typographical error for rhine (Gr.), rasp, but often mistranslated as rhynchos (Gr.), snout; odon , tooth, referring to small, slightly curved teeth, “placed in longitudinal rows, and altogether so disposed towards the anterior edges of jaws as to exhibit the resemblance of a rasp or file lying across each” ( See ETYFish ) ; typus: Serving as type species of the genus ( See ETYFish ) . Eponymy: Camrin D Braun is an American ichthyologist. [...] (Ref. 128868 ), visit book page .",
+        "raw_start": 21050,
+        "raw_end": 22761,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Environment: milieu / climate zone / depth range / distribution range",
+        "text": "Marine; pelagic-oceanic; oceanodromous (Ref. 87829 ); depth range 0 - 1928 m (Ref. 106604 ), usually 0 - 100 m (Ref. 89972 ). Subtropical; 18°C - 30°C (Ref. 35465 ); 45°N - 48°S, 180°W - 180°E",
+        "raw_start": 23152,
+        "raw_end": 23715,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Distribution",
+        "text": "Circumglobal, all tropical and warm temperate seas except the Mediterranean.",
+        "raw_start": 24956,
+        "raw_end": 25190,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Length at first maturity / Size / Weight / Age",
+        "text": "Maturity: L m 500.0 , range 440 - 560 cm Max length : 1,700 cm TL male/unsexed; (Ref. 48722 ); 2,000.0 cm TL (female); common length : 1,000 cm TL male/unsexed; (Ref. 12757 ); max. published weight: 34.0 t (Ref. 48722 ); max. reported age: 80 years (Ref. 116781 )",
+        "raw_start": 25290,
+        "raw_end": 25965,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Short description",
+        "text": "Dorsal spines (total): 0; Anal spines : 0. A huge, filter-feeding, blunt-headed shark with a distinct checkerboard pattern of yellow or white spots, on grey, bluish or blue-grey to green-brown back, white or yellowish underside, with horizontal and vertical stripes on back and sides of body; head broad and flat; snout short; mouth almost terminal, huge and transverse in front of eyes; prominent ridges on body, lowest terminating in a keel on caudal peduncle (Ref. 58085 , 114967 ); nostrils with rudimentary barbels; long nasoral grooves; spiracles close to and larger than eyes; 5 exceptionally large gill openings, the fifth behind pectoral fin (Ref. 110893 , 114967 ); numerous small, scale-like teeth and feeds by filtering plankton with special sieve-like modifications of the gill bars (Ref. 26938 ). Body shape ( shape guide ): elongated; Cross section: other (see remarks).",
+        "raw_start": 26783,
+        "raw_end": 28537,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Biology",
+        "text": "World's largest fish, but is harmless to humans (Ref. 6871 ). Grows up to 20m (Ref. 48722 ). Often seen offshore but coming close inshore, sometimes entering lagoons or coral atolls (Ref. 247 ). Sometimes seen cruising near outer wall (Ref. 26938 ). Reported to frequent shallow water areas near estuaries and river mouths, sometimes during seasonal shrimp blooms (Ref. 48696 ). Found singly, or in aggregations of over 100 individuals (Ref. 5578 ). Often associated with groups of pelagic fishes, especially scombrids (Ref. 247 ). Highly migratory between ocean basins and national jurisdictions, but returns to the same sites annually (Refs. 48672 , 131113 ). Feed on planktonic and nektonic prey, such as small fishes (sardines, anchovies, mackerel, juvenile tunas and albacore), small crustaceans and squids (Ref. 247 ). Often seen in a vertical position with the head at or near the surface when feeding (Ref. 13571 ). When actively feeding on zooplankton the sharks turn their heads from side to side, with part of the head lifted out of the water, and the mouth opened and closed 7-28 times per minute; these suction gulps were synchronized with the opening and closing of the gill slits (Ref. 35680 ). Ovoviviparous, with litter size of over 300 pups (Ref. 37816 , 43278 ). Females of 438 to 562 cm are immature (FIGIS 09/2003). Utilized fresh, frozen, dried and salted for human consumption, liver processed for oil, fins used for shark-fin soup, offal probably for fishmeal (Ref. 13571 ), cartilage for health supplements and skin for leather products (Ref. 48723 ). Used in Chinese medicine (Ref. 12166 ). Highly valued commodity in ecotourism operations. Populations have been depleted in several countries by harpoon fisheries (Ref. 48696 ). Estimated longevity of 80.4 yrs is much larger than reported maximum age 38 yrs based on vertebral bands for a female of 11.9 m TL. Maximum length of up to 21 m and weight of up to 42 tons have been reported (Ref. 116781 ), but probably the most reliably measured size so far is 12 m TL (Ref. 26319 ).",
+        "raw_start": 28907,
+        "raw_end": 32182,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Life cycle and mating behavior",
+        "text": "Distinct pairing with embrace (Ref. 205 ). Ovoviviparous (Ref. 35465 ). Embryos feed solely on yolk (Ref. 50449 ). Late term embryos shed their egg case within the uterus at a size of 58 to 64 cm TL (ovovivipary). The smallest free-living species are from 55-56 cm long, the smallest of which had an umbilical scar. A pregnant female has recently been found with 300 embryos, the largest of which were 58-64 cm (Refs. 26346 , 35678 ).",
+        "raw_start": 33568,
+        "raw_end": 34389,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Main reference",
+        "text": "Colman, J.G. , 1997. A review of the biology and ecology of the whale shark. J. Fish Biol. 51(6):1219-1234. (Ref. 26319 )",
+        "raw_start": 35322,
+        "raw_end": 35682,
+        "rule": "h1-section"
+      },
+      {
+        "name": "IUCN Red List Status (Ref. 130435 : Version 2025-2 (Global))",
+        "text": "Endangered (EN) (A2bd); Date assessed: 31 March 2025",
+        "raw_start": 35854,
+        "raw_end": 36299,
+        "rule": "h1-section"
+      },
+      {
+        "name": "CITES",
+        "text": "Appendix II: International trade monitored",
+        "raw_start": 36362,
+        "raw_end": 36644,
+        "rule": "h1-section"
+      },
+      {
+        "name": "CMS (Ref. 116361 )",
+        "text": "Appendix I & II: Endangered migratory species conserved through agreements",
+        "raw_start": 36770,
+        "raw_end": 37109,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Threat to humans",
+        "text": "Harmless (Ref. 6871 )",
+        "raw_start": 37181,
+        "raw_end": 37477,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Human uses",
+        "text": "Fisheries: commercial FAO - Fisheries: species profile ; Publication: search | FishSource | Sea Around Us",
+        "raw_start": 37537,
+        "raw_end": 38473,
+        "rule": "h1-section"
+      },
+      {
+        "name": "More information",
+        "text": "Trophic ecology Food items (preys) Diet composition Food consumption Food rations Predators Ecology Ecology Population dynamics Growth parameters Max. ages / sizes Length-weight rel. Length-length rel. Length-frequencies Mass conversion Recruitment Abundance Life cycle Reproduction Maturity Maturity/Gills rel. Fecundity Spawning Spawning aggregations Eggs Egg development Larvae Larval dynamics Distribution Territories FAO areas Ecosystems Occurrences Introductions BRUVS - Videos Anatomy Gill area Brain Otolith Physiology Body composition Nutrients Oxygen consumption Swimming type Swimming speed Visual pigments Fish sound Diseases & Parasites Toxicity (LC50s) Genetics Genome Genetics Heterozygosity Heritability Genetic Diversity Human related Aquaculture systems Aquaculture profiles Strains Ciguatera cases Stamps, coins, misc. Outreach Collaborators Taxonomy Common names Synonyms Morphology Morphometrics Pictures References References",
+        "raw_start": 38539,
+        "raw_end": 50426,
+        "rule": "h1-section"
+      }
+    ],
+    "warnings": []
+  },
+  "error": null
+}
+</code>
+
+==== Plectrochilus wieneri ====
+Source: [[https://www.fishbase.se/summary/48782|saved page]], UUID 0044731a-0b07-52d7-beda-9efbce461e44.
+<code json>
+{
+  "schema_version": 1,
+  "source": {
+    "doc_id": "0044731a-0b07-52d7-beda-9efbce461e44",
+    "requested_url": "https://www.fishbase.se/summary/SpeciesSummary.php?id=48782",
+    "url": "https://www.fishbase.se/summary/48782",
+    "raw_path": "raw/0044731a-0b07-52d7-beda-9efbce461e44/content.html.gz",
+    "encoding": "UTF-8",
+    "sha256": "10c5925dc2ebd17e151e1d0aeb8cc3ecc92b53c2b2725c040bc96b3e5090f1d2",
+    "fetched_at": "2026-10-26T14:14:21.955054Z"
+  },
+  "fingerprint": "589b9aaf9781b3a3f6363e4353aef72ae476e5371701d0d46767f057f79be544",
+  "status": "accepted",
+  "reason": "fishbase-summary-content",
+  "record": {
+    "schema_version": 3,
+    "profile": "fishbase-summary-regex/5",
+    "source_name": "fishbase",
+    "identifiers": [
+      {
+        "namespace": "fishbase",
+        "value": "48782"
+      }
+    ],
+    "scientific_name": "Plectrochilus wieneri",
+    "species_key": "plectrochilus wieneri",
+    "common_name": null,
+    "taxonomy": {
+      "class_name": "Teleostei",
+      "order": "Siluriformes",
+      "family": "Trichomycteridae"
+    },
+    "environments": [
+      "freshwater"
+    ],
+    "climate": "tropical",
+    "max_length": {
+      "value": 7.9,
+      "unit": "cm",
+      "measurement": "NG",
+      "sex": "male/unsexed",
+      "centimetres": 7.9
+    },
+    "iucn_code": "LC",
+    "sections": [
+      {
+        "name": "Classification / Names",
+        "text": "Teleostei (teleosts) > Siluriformes (Catfishes) > Trichomycteridae (Pencil or parasitic catfishes) > Vandelliinae Etymology: Plectrochilus: Greek, plektron = anything to strike with, spur + Greek, cheilos = lip (Ref. 45335 ) . Eponymy: Dr Charles Wiener (1851–1913) was an Austrian-French explorer and linguist who travelled widely in Peru and came close to re-discovering Machu Picchu (1875). [...] (Ref. 128868 ), visit book page . More on author: Pellegrin .",
+        "raw_start": 18508,
+        "raw_end": 20035,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Environment: milieu / climate zone / depth range / distribution range",
+        "text": "Freshwater; benthopelagic. Tropical",
+        "raw_start": 20259,
+        "raw_end": 20424,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Distribution",
+        "text": "South America: Napo River basin in Ecuador.",
+        "raw_start": 21589,
+        "raw_end": 21791,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Size / Weight / Age",
+        "text": "Maturity: L m ? range ? - ? cm Max length : 7.9 cm NG male/unsexed; (Ref. 39970 )",
+        "raw_start": 21864,
+        "raw_end": 22316,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Main reference",
+        "text": "de Pínna, M.C.C. and W. Wosiacki , 2003. Trichomycteridae (pencil or parasitic catfishes). p. 270-290. In R.E. Reis, S.O. Kullander and C.J. Ferraris, Jr. (eds.) Checklist of the Freshwater Fishes of South and Central America. Porto Alegre: EDIPUCRS, Brasil. (Ref. 39970 )",
+        "raw_start": 24425,
+        "raw_end": 24936,
+        "rule": "h1-section"
+      },
+      {
+        "name": "IUCN Red List Status (Ref. 130435 : Version 2025-2 (Global))",
+        "text": "Least Concern (LC) ; Date assessed: 09 October 2014",
+        "raw_start": 25108,
+        "raw_end": 25552,
+        "rule": "h1-section"
+      },
+      {
+        "name": "CITES",
+        "text": "Not Evaluated",
+        "raw_start": 25615,
+        "raw_end": 25810,
+        "rule": "h1-section"
+      },
+      {
+        "name": "CMS (Ref. 116361 )",
+        "text": "Not Evaluated",
+        "raw_start": 25936,
+        "raw_end": 26153,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Threat to humans",
+        "text": "Harmless",
+        "raw_start": 26225,
+        "raw_end": 26458,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Human uses",
+        "text": "FAO - Publication: search | FishSource |",
+        "raw_start": 26518,
+        "raw_end": 27149,
+        "rule": "h1-section"
+      },
+      {
+        "name": "More information",
+        "text": "Trophic ecology Food items (preys) Diet composition Food consumption Food rations Predators Ecology Ecology Population dynamics Growth parameters Max. ages / sizes Length-weight rel. Length-length rel. Length-frequencies Mass conversion Recruitment Abundance Life cycle Reproduction Maturity Maturity/Gills rel. Fecundity Spawning Spawning aggregations Eggs Egg development Larvae Larval dynamics Distribution Territories FAO areas Ecosystems Occurrences Introductions BRUVS - Videos Anatomy Gill area Brain Otolith Physiology Body composition Nutrients Oxygen consumption Swimming type Swimming speed Visual pigments Fish sound Diseases & Parasites Toxicity (LC50s) Genetics Genome Genetics Heterozygosity Heritability Genetic Diversity Human related Aquaculture systems Aquaculture profiles Strains Ciguatera cases Stamps, coins, misc. Outreach Collaborators Taxonomy Common names Synonyms Morphology Morphometrics Pictures References References",
+        "raw_start": 27215,
+        "raw_end": 35385,
+        "rule": "h1-section"
+      }
+    ],
+    "warnings": []
+  },
+  "error": null
+}
+</code>
+
+==== Ophthalmolebias ilheusensis ====
+Source: [[https://www.fishbase.se/summary/65918|saved page]], UUID 00721643-8747-57b5-aaf2-d1ba2d35a601.
+<code json>
+{
+  "schema_version": 1,
+  "source": {
+    "doc_id": "00721643-8747-57b5-aaf2-d1ba2d35a601",
+    "requested_url": "https://www.fishbase.se/summary/SpeciesSummary.php?id=65918",
+    "url": "https://www.fishbase.se/summary/65918",
+    "raw_path": "raw/00721643-8747-57b5-aaf2-d1ba2d35a601/content.html.gz",
+    "encoding": "UTF-8",
+    "sha256": "246389701cc48f288a63f9b4c32a83f9467c8d1531d932c33b538a8db9ba849a",
+    "fetched_at": "2026-10-26T01:42:21.830724Z"
+  },
+  "fingerprint": "68ae4fdf9c012b777ea81b40b60fc54359bf41d6822a1417e8d1a6de98684a48",
+  "status": "accepted",
+  "reason": "fishbase-summary-content",
+  "record": {
+    "schema_version": 3,
+    "profile": "fishbase-summary-regex/5",
+    "source_name": "fishbase",
+    "identifiers": [
+      {
+        "namespace": "fishbase",
+        "value": "65918"
+      }
+    ],
+    "scientific_name": "Ophthalmolebias ilheusensis",
+    "species_key": "ophthalmolebias ilheusensis",
+    "common_name": null,
+    "taxonomy": {
+      "class_name": "Teleostei",
+      "order": "Cyprinodontiformes",
+      "family": "Rivulidae"
+    },
+    "environments": [
+      "freshwater"
+    ],
+    "climate": "tropical",
+    "max_length": null,
+    "iucn_code": "CR",
+    "sections": [
+      {
+        "name": "Classification / Names",
+        "text": "Teleostei (teleosts) > Cyprinodontiformes (Rivulines, killifishes and live bearers) > Rivulidae (Rivulines) > Cynolebiinae More on authors: Costa & Lima .",
+        "raw_start": 18349,
+        "raw_end": 19369,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Environment: milieu / climate zone / depth range / distribution range",
+        "text": "Freshwater; benthopelagic. Tropical",
+        "raw_start": 19593,
+        "raw_end": 19758,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Distribution",
+        "text": "South America: Brazil.",
+        "raw_start": 20989,
+        "raw_end": 21170,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Size / Weight / Age",
+        "text": "Maturity: L m ? range ? - ? cm",
+        "raw_start": 21243,
+        "raw_end": 21591,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Main reference",
+        "text": "Costa, W.J.E.M. and S.M.Q. Lima , 2010. Simpsonichthys ilheusensis , a new seasonal killifish of the subgenus Ophthalmolebias from northeastern Brazil (Cyprinodontiformes: Rivulidae). Ichthyol. Explor. Freshwat. 21(3):205-208. (Ref. 85562 )",
+        "raw_start": 23753,
+        "raw_end": 24245,
+        "rule": "h1-section"
+      },
+      {
+        "name": "IUCN Red List Status (Ref. 130435 : Version 2025-2 (Global))",
+        "text": "Critically Endangered (CR) (B1ab(iii)+2ab(iii)); Date assessed: 07 November 2018",
+        "raw_start": 24417,
+        "raw_end": 24894,
+        "rule": "h1-section"
+      },
+      {
+        "name": "CITES",
+        "text": "Not Evaluated",
+        "raw_start": 24957,
+        "raw_end": 25152,
+        "rule": "h1-section"
+      },
+      {
+        "name": "CMS (Ref. 116361 )",
+        "text": "Not Evaluated",
+        "raw_start": 25278,
+        "raw_end": 25495,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Threat to humans",
+        "text": "Harmless",
+        "raw_start": 25567,
+        "raw_end": 25800,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Human uses",
+        "text": "FAO - Publication: search | FishSource |",
+        "raw_start": 25860,
+        "raw_end": 26509,
+        "rule": "h1-section"
+      },
+      {
+        "name": "More information",
+        "text": "Trophic ecology Food items (preys) Diet composition Food consumption Food rations Predators Ecology Ecology Population dynamics Growth parameters Max. ages / sizes Length-weight rel. Length-length rel. Length-frequencies Mass conversion Recruitment Abundance Life cycle Reproduction Maturity Maturity/Gills rel. Fecundity Spawning Spawning aggregations Eggs Egg development Larvae Larval dynamics Distribution Territories FAO areas Ecosystems Occurrences Introductions BRUVS - Videos Anatomy Gill area Brain Otolith Physiology Body composition Nutrients Oxygen consumption Swimming type Swimming speed Visual pigments Fish sound Diseases & Parasites Toxicity (LC50s) Genetics Genome Genetics Heterozygosity Heritability Genetic Diversity Human related Aquaculture systems Aquaculture profiles Strains Ciguatera cases Stamps, coins, misc. Outreach Collaborators Taxonomy Common names Synonyms Morphology Morphometrics Pictures References References",
+        "raw_start": 26575,
+        "raw_end": 34670,
+        "rule": "h1-section"
+      }
+    ],
+    "warnings": [
+      "maximum-length-unavailable"
+    ]
+  },
+  "error": null
+}
+</code>
+
+==== Myliobatis freminvillei ====
+Source: [[https://www.fishbase.se/summary/Myliobatis_freminvillei.html|saved page]], UUID 027ea98e-5e33-5526-9fc2-bba64f78cbec.
+<code json>
+{
+  "schema_version": 1,
+  "source": {
+    "doc_id": "027ea98e-5e33-5526-9fc2-bba64f78cbec",
+    "requested_url": "https://www.fishbase.se/summary/SpeciesSummary.php?genusname=Myliobatis&speciesname=freminvillei",
+    "url": "https://www.fishbase.se/summary/Myliobatis_freminvillei.html",
+    "raw_path": "raw/027ea98e-5e33-5526-9fc2-bba64f78cbec/content.html.gz",
+    "encoding": "UTF-8",
+    "sha256": "acc6cd6d88b79a8938f30d9c9a065c2e7649bc49900cbb7abb11bc8896f4985d",
+    "fetched_at": "2026-10-25T22:18:25.494013Z"
+  },
+  "fingerprint": "a853e9e86980635d9833968781d5ed26e891217a0953257913ea613af4e9945d",
+  "status": "accepted",
+  "reason": "fishbase-summary-content",
+  "record": {
+    "schema_version": 3,
+    "profile": "fishbase-summary-regex/5",
+    "source_name": "fishbase",
+    "identifiers": [
+      {
+        "namespace": "fishbase",
+        "value": "1251"
+      }
+    ],
+    "scientific_name": "Myliobatis freminvillei",
+    "species_key": "myliobatis freminvillei",
+    "common_name": "Bullnose eagle ray",
+    "taxonomy": {
+      "class_name": "Elasmobranchii",
+      "order": "Myliobatiformes",
+      "family": "Myliobatidae"
+    },
+    "environments": [
+      "marine",
+      "brackish"
+    ],
+    "climate": "subtropical",
+    "max_length": {
+      "value": 129.0,
+      "unit": "cm",
+      "measurement": "WD",
+      "sex": "male/unsexed",
+      "centimetres": 129.0
+    },
+    "iucn_code": "VU",
+    "sections": [
+      {
+        "name": "Classification / Names",
+        "text": "Elasmobranchii (sharks and rays) > Myliobatiformes (Stingrays) > Myliobatidae (Eagle and manta rays) Etymology: Myliobatis: Greek, mylo = mill + Greek, + Greek, batis,-idos = a ray (Raja sp.) (Ref. 45335 ) . Eponymy: Christophe/Chrétien-Paulin de la Poix Chevalier de Fréminville (1787–1848) was a French naval officer and naturalist. [...] (Ref. 128868 ), visit book page . More on author: Lesueur .",
+        "raw_start": 22191,
+        "raw_end": 23673,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Environment: milieu / climate zone / depth range / distribution range",
+        "text": "Marine; brackish; benthopelagic; depth range 0 - 100 m (Ref. 57911 ), usually 1 - 10 m. Subtropical; 43°N - 42°S, 97°W - 33°W",
+        "raw_start": 24088,
+        "raw_end": 24416,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Distribution",
+        "text": "Western Atlantic: continental waters from Cape Cod to southeastern Florida (?) in the USA; also southern Brazil to Argentina (Ref. 58839 ). Reported (but not known for certain) from Gulf of Mexico, Florida and Caribbean islands, and northern South America. Often confused with Myliobatis goodei (Ref. 3173 ).",
+        "raw_start": 25770,
+        "raw_end": 26351,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Length at first maturity / Size / Weight / Age",
+        "text": "Maturity: L m 65.0 , range 60 - 70 cm Max length : 129 cm WD male/unsexed; (Ref. 49746 ); common length : 70.0 cm WD male/unsexed; (Ref. 5217 )",
+        "raw_start": 26451,
+        "raw_end": 26898,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Short description",
+        "text": "Disk broad with long sharply pointed wings and projecting snout. Tail very long, Few middorsal spines on disk in adults (Ref. 7251 ). Greyish, reddish chocolate or dusky brown above. Lower surface either pure white or whitish. Teeth green (Ref. 6902 ). Body shape ( shape guide ): other.",
+        "raw_start": 27595,
+        "raw_end": 28303,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Biology",
+        "text": "Found frequently in coastal waters to 10 m depth, mainly in shallow estuaries. Capable of traveling long distances, occasionally leaps out of the water. Swims in midwater. Cruises slowly over the bottom, rooting out bivalves with its beak and wings when feeding (Ref. 7251 ). Ovoviviparous (Ref. 50449 ).",
+        "raw_start": 28673,
+        "raw_end": 29235,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Life cycle and mating behavior",
+        "text": "Exhibit ovoviparity (aplacental viviparity), with embryos feeding initially on yolk, then receiving additional nourishment from the mother by indirect absorption of uterine fluid enriched with mucus, fat or protein through specialised structures (Ref. 50449 ).",
+        "raw_start": 30542,
+        "raw_end": 30979,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Main reference",
+        "text": "Robins, C.R. and G.C. Ray , 1986. A field guide to Atlantic coast fishes of North America. Houghton Mifflin Company, Boston, U.S.A. 354 p. (Ref. 7251 )",
+        "raw_start": 31969,
+        "raw_end": 32358,
+        "rule": "h1-section"
+      },
+      {
+        "name": "IUCN Red List Status (Ref. 130435 : Version 2025-2 (Global))",
+        "text": "Vulnerable (VU) (A2bd); Date assessed: 21 June 2019",
+        "raw_start": 32530,
+        "raw_end": 32975,
+        "rule": "h1-section"
+      },
+      {
+        "name": "CITES",
+        "text": "Not Evaluated",
+        "raw_start": 33038,
+        "raw_end": 33233,
+        "rule": "h1-section"
+      },
+      {
+        "name": "CMS (Ref. 116361 )",
+        "text": "Not Evaluated",
+        "raw_start": 33359,
+        "raw_end": 33576,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Threat to humans",
+        "text": "Harmless",
+        "raw_start": 33648,
+        "raw_end": 33881,
+        "rule": "h1-section"
+      },
+      {
+        "name": "Human uses",
+        "text": "Fisheries: minor commercial FAO - Publication: search | FishSource | Sea Around Us",
+        "raw_start": 33941,
+        "raw_end": 34765,
+        "rule": "h1-section"
+      },
+      {
+        "name": "More information",
+        "text": "Trophic ecology Food items (preys) Diet composition Food consumption Food rations Predators Ecology Ecology Population dynamics Growth parameters Max. ages / sizes Length-weight rel. Length-length rel. Length-frequencies Mass conversion Recruitment Abundance Life cycle Reproduction Maturity Maturity/Gills rel. Fecundity Spawning Spawning aggregations Eggs Egg development Larvae Larval dynamics Distribution Territories FAO areas Ecosystems Occurrences Introductions BRUVS - Videos Anatomy Gill area Brain Otolith Physiology Body composition Nutrients Oxygen consumption Swimming type Swimming speed Visual pigments Fish sound Diseases & Parasites Toxicity (LC50s) Genetics Genome Genetics Heterozygosity Heritability Genetic Diversity Human related Aquaculture systems Aquaculture profiles Strains Ciguatera cases Stamps, coins, misc. Outreach Collaborators Taxonomy Common names Synonyms Morphology Morphometrics Pictures References References",
+        "raw_start": 34831,
+        "raw_end": 46232,
+        "rule": "h1-section"
+      }
+    ],
+    "warnings": []
+  },
+  "error": null
+}
+</code>
+
+===== Query semantics =====
+
+Words use implicit AND. Uppercase AND/OR/NOT, minus, parentheses and double-quoted phrases are supported. Phrase candidates come from positional postings; the stored span verifies punctuation. Matches stay inside one segment. Punctuation outside the requested span is irrelevant. NFKC, casefold and whitespace normalization apply. Stop words are optional: omitted postings retain positional gaps and searchable text, so phrases with stop words can be verified in candidate text; an all-stop-word phrase scans texts sequentially. No stop words are configured in the submitted index. Numeric attribute filters, stemming, wildcard and fuzzy operators are not implemented.

@@ -1,0 +1,74 @@
+[project]
+name = "fiit-vinf"
+version = "0.10.0"
+description = "Independent crawling, parsing, indexing and search applications."
+requires-python = ">=3.12"
+dependencies = [
+    "vinf-core",
+    "vinf-crawler",
+    "vinf-parsing",
+    "vinf-indexing",
+    "vinf-search",
+    "vinf-spark",
+    "vinf-lucene",
+    "rich>=14,<15",
+    "typer>=0.27,<1",
+    "tiktoken>=0.12,<1",
+]
+
+[project.scripts]
+vinf = "vinf.cli.app:app"
+vinf-crawl = "vinf.cli.crawl:app"
+vinf-parse = "vinf.cli.parse:app"
+vinf-index = "vinf.cli.index:app"
+vinf-search = "vinf.cli.search:app"
+vinf-spark = "vinf.cli.spark:app"
+vinf-lucene = "vinf.cli.lucene:app"
+
+[project.optional-dependencies]
+spark = ["vinf-spark[local]"]
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+# Published 3.5.9 metadata; avoid downloading its large sdist just to resolve a lock.
+[[tool.uv.dependency-metadata]]
+name = "pyspark"
+version = "3.5.9"
+requires-python = ">=3.8"
+requires-dist = [
+    "py4j>=0.10.9.7,<0.10.9.10",
+    "numpy>=1.15,<2; extra == 'ml'",
+    "numpy>=1.15,<2; extra == 'mllib'",
+    "pandas>=1.0.5; extra == 'sql'",
+    "pyarrow>=4.0.0; extra == 'sql'",
+    "numpy>=1.15,<2; extra == 'sql'",
+    "pandas>=1.0.5; extra == 'pandas-on-spark'",
+    "pyarrow>=4.0.0; extra == 'pandas-on-spark'",
+    "numpy>=1.15,<2; extra == 'pandas-on-spark'",
+    "pandas>=1.0.5; extra == 'connect'",
+    "pyarrow>=4.0.0; extra == 'connect'",
+    "grpcio>=1.56.0; extra == 'connect'",
+    "grpcio-status>=1.56.0; extra == 'connect'",
+    "googleapis-common-protos>=1.56.4; extra == 'connect'",
+    "numpy>=1.15,<2; extra == 'connect'",
+]
+
+[tool.uv.sources]
+vinf-core = { workspace = true }
+vinf-crawler = { workspace = true }
+vinf-parsing = { workspace = true }
+vinf-indexing = { workspace = true }
+vinf-search = { workspace = true }
+vinf-spark = { workspace = true }
+vinf-lucene = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.9,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "vinf"
+
+[dependency-groups]
+dev = ["ruff>=0.14,<1"]

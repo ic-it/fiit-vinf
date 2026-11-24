@@ -1,0 +1,15 @@
+[project]
+name = "vinf-lucene"
+version = "0.10.0"
+description = "Independent PyLucene indexing and retrieval of FishBase and Wikipedia records."
+requires-python = ">=3.12"
+dependencies = ["vinf-core", "vinf-search", "vinf-spark"]
+
+[build-system]
+requires = ["uv_build>=0.9,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv.sources]
+vinf-core = { workspace = true }
+vinf-search = { workspace = true }
+vinf-spark = { workspace = true }

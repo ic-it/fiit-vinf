@@ -1,0 +1,34 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "tokenizer_version": {
+      "const": "unicode-words-v2",
+      "default": "unicode-words-v2",
+      "title": "Tokenizer Version",
+      "type": "string"
+    },
+    "stop_words": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Stop Words",
+      "type": "array"
+    },
+    "k1": {
+      "default": 1.2,
+      "exclusiveMinimum": 0,
+      "title": "K1",
+      "type": "number"
+    },
+    "b": {
+      "default": 0.75,
+      "maximum": 1,
+      "minimum": 0,
+      "title": "B",
+      "type": "number"
+    }
+  },
+  "title": "IndexConfig",
+  "type": "object"
+}

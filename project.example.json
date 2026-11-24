@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "name": "fish-search",
+  "sources": [
+    {
+      "name": "fishbase",
+      "profile": "fishbase",
+      "crawled": "data/fishbase/crawled",
+      "parsed": "data/fishbase/parsed",
+      "crawl": {
+        "schema_version": 2,
+        "seeds": [
+          "https://www.fishbase.se/summary/268"
+        ],
+        "scope": {
+          "allowed_hosts": [],
+          "include_subdomains": false,
+          "allowed_schemes": [
+            "http",
+            "https"
+          ],
+          "allow_url_patterns": [],
+          "deny_url_patterns": []
+        },
+        "traversal": {
+          "max_depth": null,
+          "max_pages": null,
+          "max_total_bytes": null,
+          "max_links_per_page": null
+        },
+        "http": {
+          "user_agent": "FIITVinfCrawler/0.10 (educational project; +https://vi2026.ui.sav.sk/doku.php)",
+          "delay_seconds": 10.0,
+          "connect_timeout": 10.0,
+          "read_timeout": 30.0,
+          "max_response_bytes": 10485760,
+          "max_redirects": 5
+        },
+        "robots": {
+          "strategy": "respect"
+        },
+        "failures": {
+          "rate_limit": "defer",
+          "temporary": "defer",
+          "other": "defer",
+          "max_attempts": 3,
+          "retry_delay_seconds": 60.0,
+          "max_retry_delay_seconds": 3600.0
+        },
+        "storage": {
+          "compression": "none"
+        },
+        "proxies": [],
+        "parallel": {
+          "workers": 1
+        }
+      }
+    }
+  ],
+  "indexed": "data/indexed",
+  "index": {
+    "tokenizer_version": "unicode-words-v2",
+    "stop_words": [],
+    "k1": 1.2,
+    "b": 0.75
+  },
+  "queries": "queries.example.json"
+}

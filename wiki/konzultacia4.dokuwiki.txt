@@ -1,0 +1,211 @@
+====== Fourth consultation - PyLucene index ======
+
+[[user:icit:start|Project]] · [[user:icit:konzultacia3|Spark extraction and join]] · [[https://vi2026.ui.sav.sk/doku.php?id=projekty.pre.rok.2026#konzultacia4luceneindex|Requirements]]
+
+Prepared on 24 November 2026. Current code: [[https://github.com/ic-it/fiit-vinf|ic-it/fiit-vinf on GitHub]]. The application now has a separate native PyLucene backend. It consumes the completed Spark snapshots; the existing crawler, extraction and self-written index remain independently usable.
+
+===== Working result =====
+
+^ Measurement ^ Value ^
+| Indexed FishBase records | 9,724 |
+| Records enriched with accepted Wikipedia links | 5,157 |
+| FishBase records retained without a Wikipedia link | 4,567 |
+| Original index payload | 71,187,487 bytes |
+| Lucene index payload, including enrichment | 18,234,605 bytes |
+| Local Lucene build | 3.163 seconds |
+| PyLucene / Lucene / Java | 9.12.0 / 9.12.0 / 17.0.21.1 |
+
+Sizes are actual index-file bytes; manifests, compiler/JDK dependencies and original input datasets are excluded from both payload totals. Lucene handles compression internally; its index is not wrapped in gzip. The formats, analysis and stored fields differ, so these measurements describe this corpus rather than a general compression or speedup claim.
+
+===== Requirements and implementation =====
+
+  * Completed Spark code, Wikipedia extraction and join: documented in the [[user:icit:konzultacia3|third consultation]]. These saved inputs were reused without another crawl.
+  * PyLucene index: vinf-lucene builds a native FSDirectory through IndexWriter and searches it through IndexSearcher.
+  * Fields: the table below lists each type, storage choice and purpose.
+  * Application integration: vinf lucene build/query/compare/status/schema use the current project's paths. vinf-lucene is an additional entry point to the same library.
+  * Old/new comparison: five existing described queries, identical FishBase identities, observed results and median timings below.
+  * Query types actually exercised: Boolean, positional PhraseQuery, FuzzyQuery and exact keyword fields. Numeric Range queries are not part of this schema; the assignment lists Range as an example query type.
+  * Current source: [[https://github.com/ic-it/fiit-vinf|GitHub repository]], plus the source ZIP below.
+
+<code text>
+completed Spark FishBase species + accepted Wikipedia links (JSON.gz)
+    -> vinf-lucene / IndexWriter / explicit schema
+    -> data/lucene/indexed/index/ (native Lucene files)
+    -> vinf lucene query / MultiFieldQueryParser / IndexSearcher / BM25
+</code>
+
+Every FishBase species is indexed, including unmatched records. Accepted Wikipedia text, categories, authority and status enrich only the linked records. Source identifiers, URLs, UUIDs, Wikipedia revisions and content hashes preserve provenance. Source-specific conservation values remain separate. The indexer reads saved DTOs without downloading, reparsing raw HTML or starting Spark.
+
+===== Fields and analysis =====
+
+^ Field ^ Lucene type ^ Stored ^ Reason ^
+| identity | StringField | yes | Unique source-qualified identity; exact lookup. |
+| source | StringField | yes | Exact source filter and multi-source identity. |
+| source_id | StringField | yes | FishBase identifier; comparisons use the same IDs. |
+| doc_id | StoredField | yes | Original crawler UUID; provenance, not relevance. |
+| url | StoredField | yes | Open the original FishBase page without indexing URL tokens. |
+| scientific_name | TextField | yes | Search scientific-name words and display the original name. |
+| scientific_exact | StringField | no | Exact normalized scientific-name lookup. |
+| common_name | TextField | yes | Search and display the common name. |
+| fishbase_text | TextField | yes | Extracted sections, stored once; positional phrase search. |
+| family | StringField | yes | Exact explicit FishBase family; no inherited Wiki taxonomy guesses. |
+| order | StringField | yes | Exact explicit FishBase order. |
+| environment | StringField, repeated | yes | Exact marine/freshwater/brackish filters. |
+| iucn | StringField | yes | Exact FishBase conservation code, kept separate from Wikipedia. |
+| linked | StringField | yes | Filter records with an accepted Wikipedia link. |
+| wiki_text | TextField | yes | Wikipedia lead; descriptive enrichment stored once. |
+| wiki_categories | TextField | yes | Search topic/category words from Wikipedia. |
+| wiki_authority | TextField | yes | Search explicitly extracted taxonomic authority. |
+| wiki_status | StringField | yes | Wikipedia conservation code without overwriting FishBase. |
+| wiki_status_system | StoredField | yes | Interpret the Wikipedia conservation code. |
+| wiki_page_id | StringField | yes | Exact identity of the linked Wikipedia page. |
+| wiki_revision_id | StoredField | yes | Reproduce the Wikipedia source revision. |
+| wiki_url | StoredField | yes | Open the linked Wikipedia article. |
+| wiki_wikitext_sha256 | StoredField | yes | Trace extracted Wikipedia text to saved source content. |
+
+TextFields store positions for phrase queries and each text once in its own field. There is no extra aggregate fulltext copy. StoredField values support display/provenance without contributing tokens. StringFields support exact filters. No numeric length field is indexed; source numeric attributes remain in the extracted records.
+
+StandardAnalyzer tokenizes and lowercases text, with an empty stop-word set and no stemming. KeywordAnalyzer handles exact fields. Exact values are case-sensitive: family:Cyprinidae, iucn:EN, environment:freshwater. scientific_exact uses the shared normalized key, for example scientific_exact:"aaptosyax grypus".
+
+The default query searches scientific/common names, FishBase sections and the three Wikipedia text fields. --scope fishbase limits default fields to scientific_name, common_name and fishbase_text; --scope wikipedia selects wiki_text, wiki_categories and wiki_authority. An explicit field prefix still selects its named field.
+
+Implicit AND is enabled. Parentheses make mixed Boolean intent explicit. Quoted Lucene phrases match consecutive analyzed tokens within a field; punctuation is not literal. For example, "Aaptosyax, grypus" can match Aaptosyax grypus. The original vinf search backend still provides punctuation-sensitive literal phrases. Fuzzy matching tolerates spelling edits; it does not resolve taxonomic synonyms.
+
+Ranking is BM25 with k1=1.2 and b=0.75. Lucene uses per-field term/document statistics and encoded length norms; a phrase is scored as a phrase query. The old engine ranks positive constituent terms over its concatenated text. Absolute scores are therefore not directly comparable. --explain prints Lucene's actual query and BM25 explanation, including frequency, IDF and length normalization.
+
+===== Actual query examples =====
+
+^ Type ^ Query ^ Matches ^ First results ^
+| boolean | ''marine (Pacific OR Atlantic) -freshwater'' | 4,298 | Priacanthus arenatus; Liparis atlanticus; Peprilus triacanthus |
+| phrase | ''"coral reefs"'' | 291 | Plagiotremus townsendi; Starksia atlantica; Starksia lepicoelia |
+| fuzzy | ''scientific_name:Aaptosyaz~1'' | 1 | Aaptosyax grypus |
+| keyword | ''family:Cyprinidae AND environment:freshwater'' | 560 | Labeo fimbriatus; Pethia phutunio; Labeobarbus batesii |
+| wikipedia | ''wiki_authority:Hamilton'' | 58 | Ambassis nalua; Anodontostoma chacunda; Labeo angra |
+
+===== Old index versus Lucene =====
+
+Both indexes contain the same 9,724 source-qualified FishBase identities. For each query, one warm-up precedes 5 measured repetitions. Times are local medians in milliseconds, including index opening and result construction, with JVM startup excluded. File-system cache conditions are not a controlled cold-start benchmark. Results are top 5; scores are not compared across engines.
+
+Three runs separate a backend/analysis change from enrichment: self-written BM25, Lucene using only FishBase default fields, and enriched Lucene. StandardAnalyzer splits punctuation/hyphens differently; field lengths/statistics and phrase scoring differ. Thus even FishBase-only match counts and ordering can change. Additional Wikipedia text can add matches, alter ranking or exclude a record through a negative term.
+
+==== Query 1 ====
+
+Which marine fish descriptions refer to the tropical or subtropical Western Pacific?
+
+Explore a region and climate together. The text must contain marine, the exact phrase Western Pacific, and tropical or subtropical. The standalone word freshwater excludes the document, including descriptions of species that also occur in fresh water.
+
+<code text>
+marine "Western Pacific" (tropical OR subtropical) -freshwater
+</code>
+
+^ Engine ^ Matches ^ Median ms ^ Ordered top results ^
+| self-written BM25 | 528 | 172.400 | 1. Echiodon anchipterus (FishBase 62014); 2. Odontanthias rhodopeplus (FishBase 10631); 3. Odontanthias unimaculatus (FishBase 24847); 4. Scopelosaurus mauli (FishBase 22977); 5. Symbolophorus boops (FishBase 7298) |
+| Lucene FishBase | 530 | 6.039 | 1. Symphurus thermophilus (FishBase 64628); 2. Argyropelecus lychnus (FishBase 11549); 3. Ostichthys spiniger (FishBase 69072); 4. Etrumeus micropus (FishBase 60868); 5. Ostorhinchus doederleini (FishBase 8587) |
+| Lucene enriched | 622 | 5.723 | 1. Symphurus thermophilus (FishBase 64628); 2. Ophichthus woosuitingi (FishBase 59379); 3. Tomiyamichthys russus (FishBase 59828); 4. Paracaesio caerulea (FishBase 189); 5. Ophichthus roseus (FishBase 59376) |
+
+Top-5 overlap with the old engine: 0 for Lucene FishBase-only; 0 for enriched Lucene.
+
+==== Query 2 ====
+
+Which freshwater fish descriptions mention threatened species in the Mekong or Chao Phraya basins?
+
+Find regional conservation candidates. The text must contain freshwater, either Mekong or the exact phrase Chao Phraya, and Endangered or Vulnerable. Endangered also matches the word in Critically Endangered. A mention of either river is sufficient; the query does not require both.
+
+<code text>
+freshwater (Mekong OR "Chao Phraya") (Endangered OR Vulnerable)
+</code>
+
+^ Engine ^ Matches ^ Median ms ^ Ordered top results ^
+| self-written BM25 | 17 | 25.582 | 1. Oxygaster pointoni (FishBase 27041); 2. Ambastaia sidthimunki (FishBase 10910); 3. Oreoglanis siamensis (FishBase 6194); 4. Pangasianodon hypophthalmus (FishBase 14154); 5. Probarbus jullieni (FishBase 5422) |
+| Lucene FishBase | 17 | 3.101 | 1. Oxygaster pointoni (FishBase 27041); 2. Ambastaia sidthimunki (FishBase 10910); 3. Oreoglanis siamensis (FishBase 6194); 4. Pangasianodon hypophthalmus (FishBase 14154); 5. Probarbus jullieni (FishBase 5422) |
+| Lucene enriched | 17 | 3.143 | 1. Pangasianodon hypophthalmus (FishBase 14154); 2. Oreoglanis siamensis (FishBase 6194); 3. Oxygaster pointoni (FishBase 27041); 4. Ambastaia sidthimunki (FishBase 10910); 5. Aaptosyax grypus (FishBase 16239) |
+
+Top-5 overlap with the old engine: 5 for Lucene FishBase-only; 4 for enriched Lucene.
+
+==== Query 3 ====
+
+Which marine descriptions combine reef habitats with crustacean or mollusk feeding terms?
+
+Explore habitat and diet vocabulary together. The text must contain marine, either exact phrase coral reefs or rocky reefs, and at least one of crustaceans, mollusks or molluscs. Both spellings of mollusks are explicit alternatives. Read the returned description to check the feeding relationship.
+
+<code text>
+marine ("coral reefs" OR "rocky reefs") (crustaceans OR mollusks OR molluscs)
+</code>
+
+^ Engine ^ Matches ^ Median ms ^ Ordered top results ^
+| self-written BM25 | 54 | 68.716 | 1. Choerodon robustus (FishBase 6926); 2. Polyamblyodon gibbosum (FishBase 7934); 3. Paraplotosus albilabris (FishBase 12097); 4. Symphorichthys spilurus (FishBase 214); 5. Pateobatis fai (FishBase 12587) |
+| Lucene FishBase | 54 | 3.677 | 1. Polyamblyodon gibbosum (FishBase 7934); 2. Choerodon robustus (FishBase 6926); 3. Pateobatis fai (FishBase 12587); 4. Balistes polylepis (FishBase 4276); 5. Lactophrys triqueter (FishBase 1109) |
+| Lucene enriched | 62 | 3.793 | 1. Pateobatis fai (FishBase 12587); 2. Balistes polylepis (FishBase 4276); 3. Caranx heberi (FishBase 1898); 4. Bothus lunatus (FishBase 978); 5. Polyamblyodon gibbosum (FishBase 7934) |
+
+Top-5 overlap with the old engine: 3 for Lucene FishBase-only; 2 for enriched Lucene.
+
+==== Query 4 ====
+
+Which freshwater fish descriptions connect cave habitats with blindness?
+
+Find candidates for studying cave-related loss of vision. The text must contain freshwater, at least one of cave, caves or subterranean, and blind or eyeless. Singular and plural forms are written explicitly because the search does not perform stemming.
+
+<code text>
+freshwater (cave OR caves OR subterranean) (blind OR eyeless)
+</code>
+
+^ Engine ^ Matches ^ Median ms ^ Ordered top results ^
+| self-written BM25 | 14 | 15.589 | 1. Oxyeleotris caeca (FishBase 47647); 2. Ophisternon candidum (FishBase 6305); 3. Barbodes klapanunggalensis (FishBase 70951); 4. Typhliasina pearsei (FishBase 6213); 5. Astyanax jordani (FishBase 6181) |
+| Lucene FishBase | 15 | 2.304 | 1. Barbodes klapanunggalensis (FishBase 70951); 2. Ophisternon candidum (FishBase 6305); 3. Typhliasina pearsei (FishBase 6213); 4. Pimelodella kronei (FishBase 48472); 5. Oxyeleotris caeca (FishBase 47647) |
+| Lucene enriched | 16 | 2.307 | 1. Barbodes klapanunggalensis (FishBase 70951); 2. Ophisternon candidum (FishBase 6305); 3. Neolissochilus pnar (FishBase 71133); 4. Oxyeleotris caeca (FishBase 47647); 5. Astyanax jordani (FishBase 6181) |
+
+Top-5 overlap with the old engine: 4 for Lucene FishBase-only; 4 for enriched Lucene.
+
+==== Query 5 ====
+
+Which freshwater fish descriptions mention migration in Europe or the Danube without marine references?
+
+Explore freshwater migration with European distribution terms. The text must contain freshwater, migratory or potamodromous, and Europe or Danube. The standalone word marine excludes the document. Danube is an alternative to Europe, so a description need not contain the broader region's name.
+
+<code text>
+freshwater (migratory OR potamodromous) (Europe OR Danube) -marine
+</code>
+
+^ Engine ^ Matches ^ Median ms ^ Ordered top results ^
+| self-written BM25 | 33 | 31.718 | 1. Leuciscus leuciscus (FishBase 4662); 2. Leuciscus aspius (FishBase 4783); 3. Barbus barbus (FishBase 4472); 4. Alburnus chalcoides (FishBase 5473); 5. Alosa saposchnikowii (FishBase 1585) |
+| Lucene FishBase | 41 | 3.179 | 1. Leuciscus leuciscus (FishBase 4662); 2. Alburnus chalcoides (FishBase 5473); 3. Leuciscus aspius (FishBase 4783); 4. Barbus barbus (FishBase 4472); 5. Lampetra planeri (FishBase 4481) |
+| Lucene enriched | 41 | 3.131 | 1. Leuciscus leuciscus (FishBase 4662); 2. Alburnus chalcoides (FishBase 5473); 3. Leuciscus idus (FishBase 2801); 4. Barbus barbus (FishBase 4472); 5. Leuciscus aspius (FishBase 4783) |
+
+Top-5 overlap with the old engine: 4 for Lucene FishBase-only; 4 for enriched Lucene.
+
+These are observed rankings and latency measurements. No human relevance judgments were collected here: overlap and additional matches are not precision, recall or proof of improved relevance. The judged comparison with Google and the source website belongs to the final evaluation.
+
+===== Verification and reproducibility =====
+
+scripts/validate_lucene.py compared all 9,724 stored FishBase records and 5,157 Wikipedia enrichments against the saved source snapshots, including IDs, descriptions, taxonomy/status and provenance. It checked identity completeness and 5,157 distinct Wikipedia page IDs. Native Lucene CheckIndex reported a clean index; the audit has no errors.
+
+The complete suite passed 30 tests, including two small native integration methods using four real records. They cover Boolean, phrase, fuzzy and exact-field queries, BM25 explanations, unchanged input files, unchanged-input reuse and rejection of an output directory containing unrelated files. The native tests are skipped explicitly if the native dependency is absent; they ran in this measured submission.
+
+<code bash>
+uv sync --locked
+uv run python scripts/install_pylucene.py
+uv run vinf lucene build
+uv run vinf lucene status
+uv run vinf lucene schema
+uv run vinf lucene query 'marine (Pacific OR Atlantic) -freshwater'
+uv run vinf lucene query '"coral reefs"' --explain
+uv run vinf lucene query 'scientific_name:Aaptosyaz~1'
+uv run vinf lucene compare
+uv run python scripts/validate_lucene.py
+</code>
+
+PyLucene is a native dependency. The installer builds Apache JCC 3.14 and a PyLucene 9.12.0 binding for the required Lucene modules from verified source/jars. A full JDK 17 and C++ compiler are needed; on macOS arm64 a checksum-verified private Temurin JDK can be downloaded automatically. The tested platform is macOS arm64 / Python 3.12. The private JDK in .cache/pylucene-build is used at runtime. Compiled wheels can be reused after an exact uv sync removes the native packages. Normal uv run preserves them. Native dependency installation is not counted as index build time.
+
+The evidence archive includes a copied four-record subset: four real FishBase records and three accepted Wikipedia enrichments. Its README runs independent indexing/search without network after dependency installation. It is explicitly a subset and not another Spark run or a full-corpus benchmark. Full input datasets and the full index remain local.
+
+  * [[https://github.com/ic-it/fiit-vinf/blob/main/packages/vinf-lucene/src/vinf_lucene/indexing.py|Executable index builder]]
+  * [[https://github.com/ic-it/fiit-vinf/blob/main/packages/vinf-lucene/src/vinf_lucene/search.py|Executable native query code]]
+  * [[https://github.com/ic-it/fiit-vinf/blob/main/packages/vinf-lucene/src/vinf_lucene/schema.py|Complete schema and field reasons]]
+  * {{:user:icit:vinf_source_20261124.zip|Current source, uv lock, documentation and tests}}
+  * {{:user:icit:vinf_lucene_evidence_20261124.zip|Measurements, examples, native audit and offline subset}}
+
+===== Next consultation and final submission =====
+
+By 9 December: evaluate search against Google and FishBase for at least five queries, present actual results as text tables, assess relevance with explicit criteria, demonstrate the finished application, and prepare the separate second-submission report with architecture, dump processing, join statistics, indexed fields, query types, old/new comparison, GitHub link and source ZIP. This page documents consultation 4; it does not claim the final evaluation is complete.
+
+Wikipedia texts retain their original CC BY-SA attribution and revision provenance. FishBase content retains its original ownership. The course wiki's text license does not relicense source data.

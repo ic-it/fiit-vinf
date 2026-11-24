@@ -1,0 +1,43 @@
+<page>
+    <title>Argentina elongata</title>
+    <ns>0</ns>
+    <id>6181681</id>
+    <revision>
+      <id>1298414379</id>
+      <parentid>1298414114</parentid>
+      <timestamp>2025-07-02T10:07:16Z</timestamp>
+      <contributor>
+        <username>AxonsArachnida</username>
+        <id>36666802</id>
+      </contributor>
+      <comment>Updated species distribution</comment>
+      <origin>1298414379</origin>
+      <model>wikitext</model>
+      <format>text/x-wiki</format>
+      <text bytes="1141" sha1="048i22tatdmy18lw1ovyvwx6aku0pn3" xml:space="preserve">{{Short description|Species of fish}}
+{{Speciesbox 
+| image = Argentina elongata (no common name).gif
+| image_caption = Drawing by Dr Tony Ayling     
+| genus = Argentina (fish)
+| species = elongata
+| authority =  [[Frederick Hutton (scientist)|F. W. Hutton]], 1879
+}}
+
+'''''Argentina elongata''''' is a species of fish in the family [[Argentinidae]] endemic to [[New Zealand]], at depths of between {{convert|69|and|600|m|ft|abbr=on}}.  Its length is up to {{convert|25.0|cm|in}}.  It is a species of minor importance to local [[commercial fisheries]].
+[[File:Argentina decagon by Frank Edward Clarke.jpg|thumb|A. elongata by Frank Edward Clarke]] 
+==References==
+* {{FishBase | genus = Argentina | species = elongata | month = February| year = 2012}}
+* Tony Ayling &amp; Geoffrey Cox, ''Collins Guide to the Sea Fishes of New Zealand'',  (William Collins Publishers Ltd, Auckland, New Zealand 1982) {{ISBN|0-00-216987-8}}
+
+{{Taxonbar|from=Q2687697}}
+
+[[Category:Argentinidae]]
+[[Category:Endemic marine fish of New Zealand]]
+[[Category:Taxa named by Frederick Hutton (scientist)]]
+[[Category:Fish described in 1879]]
+
+
+{{Argentiniformes-stub}}</text>
+      <sha1>048i22tatdmy18lw1ovyvwx6aku0pn3</sha1>
+    </revision>
+  </page>

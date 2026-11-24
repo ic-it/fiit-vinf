@@ -1,0 +1,20 @@
+{
+  "seeds": [
+    "https://www.fishbase.se/summary/268"
+  ],
+  "parallel": {
+    "workers": 4
+  },
+  "proxies": [
+    {
+      "id": "first",
+      "url_env": "VINF_PROXY_FIRST",
+      "delay_seconds": 10
+    },
+    {
+      "id": "second",
+      "url_env": "VINF_PROXY_SECOND",
+      "delay_seconds": 15
+    }
+  ]
+}

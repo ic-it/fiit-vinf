@@ -1,0 +1,89 @@
+Third consultation: Spark extraction and Wikipedia join
+10 November 2026, Tuesday group, 14:00-15:50, Seleng
+
+THREE-MINUTE EXPLANATION
+
+1. I added a separate vinf-spark library. FishBase extraction, Wikipedia extraction
+   and joining have independent commands and folders. The original crawler, parser
+   and search index remain usable separately.
+
+2. Spark processed all 15,543 saved FishBase HTML pages with the existing REGEX
+   profile. After selecting the newest page per FishBase ID, there are 9,724 species.
+   The audit compares every resulting record and its provenance with the sequential
+   parser, rather than checking only a few examples.
+
+3. Two arbitrary Wikipedia dump parts originally produced only 29 links. I replaced
+   that input selection: the COMPLETE title/offset index of the official 20261101
+   English Wikipedia dump is searched for our scientific and common names. There
+   are 5,507 scientific-title matches. Redirects guide retrieval of target articles.
+   This selects original compressed dump members, not MediaWiki API responses.
+
+4. The active input is 4,492 non-overlapping ranges containing
+   604,635,453 original bzip2 bytes. Exact HTTP ranges, sizes and hashes
+   are verified; repeated fetches reuse verified files. Spark processes neighbouring
+   pages in those members too: 416,705 main-namespace pages in total. This is
+   a selected corpus from across the full dump, not all of English Wikipedia.
+
+5. A worker streams compressed XML and buffers one page plus a 256 KiB chunk.
+   REGEX extracts namespace, IDs, revision, text, Speciesbox/Taxobox fields, lead
+   description and categories. There is no XML DOM parser or MediaWiki renderer.
+   The measured run is PySpark 3.5.9, Java 17, local[2], four output partitions.
+   It uses Spark locally; I do not claim a measured multi-machine speedup.
+
+6. The join uses the explicit scientific taxon, normalized with NFKC, casefold and
+   collapsed whitespace. Titles and common names retrieve candidates but cannot
+   establish identity. Redirects guide retrieval; synonyms are not silently equated.
+   Ambiguous names and explicit family conflicts go to review. A missing family is
+   marked not_available rather than reported as confirmed agreement.
+
+7. The result is 5,157 linked species and
+   5,157 unique Wikipedia pages: 53.03%
+   of the 9,724 species. 4,567 remain unmatched. Wikipedia adds
+   descriptions, categories, authority and conservation status. Both sources retain
+   their own facts and provenance. The old search index does not yet use this output.
+
+WHAT TO SHOW
+
+Open the third-consultation wiki report: input selection, statistics, join examples
+and the executable REGEX code. From the checkout, show:
+
+    uv run --extra spark vinf spark status
+    uv run --extra spark vinf spark examples --limit 3
+    uv run --extra spark vinf spark coverage
+
+Show data/linked/spark-plan.txt (the actual Spark physical plan) and
+reports/consultation3/audit.json. For live execution, avoid overwriting the results:
+
+    uv run --extra spark vinf spark join --output /private/tmp/vinf-consultation3-live --overwrite
+
+The evidence ZIP contains an offline mini-demo: four real FishBase packets and four
+original Wikipedia XML records, giving three links and one unmatched species.
+Follow demo/README.txt to execute each independent stage without web collection.
+
+LIKELY QUESTIONS
+
+Why not 100% coverage? Diagnosis of the 4,567 unmatched species:
+  2: ambiguous
+  73: common title only
+  192: different taxonomic name
+  4,131: no exact title in index
+  169: target without supported taxon
+A missing exact title does not prove that Wikipedia lacks an article. Taxonomic
+synonyms, alternate spellings and inherited templates need additional handling.
+A different explicit taxon is kept separate rather than guessed to be equivalent.
+
+Why not match common names? They can refer to multiple organisms or unrelated
+subjects. For example, the Shishamo redirect leads to a band. Orestias elegans has
+both plant and fish candidates. Exact-name ambiguity is therefore kept for review.
+
+How is family checked? Only explicit family values from both sources are compared.
+Automatic taxonomy often inherits family from other templates, which are not
+rendered or fetched by this extractor. Missing is different from agreement.
+
+How much reaches driver memory? The Spark stages collect aggregates and eight
+example links. Large intermediate RDDs use DISK_ONLY. Workers stream page records;
+the coverage diagnostic keeps only relevant article identities, not all text.
+
+What remains next? PyLucene schema and implementation, justified fields/query
+choices, comparison with the old index and a GitHub link, due 25 November. Judged
+search evaluation and final submission follow by 9 December.

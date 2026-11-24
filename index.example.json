@@ -1,0 +1,6 @@
+{
+  "tokenizer_version": "unicode-words-v2",
+  "stop_words": [],
+  "k1": 1.2,
+  "b": 0.75
+}
